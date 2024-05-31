@@ -51,7 +51,7 @@ class _RetrieveEmployeeScreenState extends State<RetrieveEmployeeScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/employee/$uname/$password'),
+        Uri.parse('http://192.168.1.34:3000/api/employee/$uname/$password'),
       );
 
       print('Response Body: ${response.body}');
@@ -77,7 +77,7 @@ class _RetrieveEmployeeScreenState extends State<RetrieveEmployeeScreen> {
   Future<void> _checkUserLogin(String uname, String password) async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/user/$uname/$password'),
+        Uri.parse('http://192.168.1.34:3000/api/user/$uname/$password'),
       );
 
       print('User Response Body: ${response.body}');
@@ -250,9 +250,26 @@ void _showErrorDialog(String message) {
               fit: BoxFit.cover,
             ),
           ),
+           Positioned(
+      top: 10.0,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Text(
+          'ELMS',
+          style: TextStyle(
+            fontSize: 50,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),  
+        ),
+      ),
+    ),
+
           Center(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
+              
               child: Container(
                 width: 500,
                 height: 400,
@@ -266,11 +283,15 @@ void _showErrorDialog(String message) {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     SizedBox(height: 20),
-                    Icon(
-                      Icons.lock,
-                      size: 50,
-                      color: Colors.blue,
-                    ),
+                   Text(
+            'LOGIN', // Title text
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
+            ),
+          ),
                     SizedBox(height: 25),
                     TextFormField(
                       controller: _empunameController,
