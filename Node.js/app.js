@@ -3,6 +3,20 @@ const express = require('express');
 const oracledb = require('oracledb');
 const bodyParser = require('body-parser');
 const cors = require('cors')
+const multer = require('multer');
+const fs = require('fs');
+
+// Multer configuration
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
 
 // Create Express app
 const app = express();
@@ -19,6 +33,49 @@ const dbConfig = {
   password: 'project123',
   connectString: 'ORCL',
 };
+
+
+
+app.get('/api/counts', async (req, res) => {
+  try {
+    // Connect to Oracle Database
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    // Execute the query to fetch counts
+    const query = `
+      SELECT
+      (SELECT COUNT(*) FROM employee) AS employee,
+      (SELECT COUNT(*) FROM leave_application) AS leave,
+        (SELECT COUNT(*) FROM leave_application WHERE APPROVED_BYHR = 'Approved') AS approved,
+        (SELECT COUNT(*) FROM leave_application WHERE APPROVED_BYHR = ' ' OR APPROVED_BYHR IS NULL) AS pending,
+        (SELECT COUNT(*) FROM leave_application WHERE APPROVED_BYHR = 'Rejected') AS rejected
+      FROM dual
+    `;
+    const result = await connection.execute(query);
+
+    // Extract counts from the result
+    const counts = {
+      employee: result.rows[0][0],
+      leave: result.rows[0][1],
+      approved: result.rows[0][2],
+      pending: result.rows[0][3],
+      rejected: result.rows[0][4]
+    };
+
+    // Release the connection
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    // Send counts as JSON response
+    res.json(counts);
+  } catch (error) {
+    console.error('Error:', error);
+
+    // Send an error response
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 app.post('/api/login1', async (req, res) => {
   console.log('Received POST request at /api/login');
@@ -272,10 +329,78 @@ app.get('/api/managedept', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+app.put('/api/update_department/:deptId', async (req, res) => {
+  console.log('Received PUT request at /api/update_department/:deptId');
+  
+  const deptId = req.params.deptId;
+  const {
+    DEPT_NAME,
+    DEPT_SHORT_NAME,
+    // Add other department details here if needed
+  } = req.body;
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    const result = await connection.execute(
+      `UPDATE dept 
+       SET DEPT_NAME = :DEPT_NAME,
+           DEPT_SHORT_NAME = :DEPT_SHORT_NAME
+       WHERE DEPT_ID = :DEPT_ID`,
+      {
+        DEPT_NAME,
+        DEPT_SHORT_NAME,
+        DEPT_ID: deptId // Use the deptId from the URL parameter
+      }
+    );
+
+    await connection.commit();
+    console.log('Transaction committed successfully');
+
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    res.status(200).json({ message: 'Department details updated successfully!' });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.delete('/api/delete_department/:deptId', async (req, res) => {
+  console.log('Received DELETE request at /api/delete_department/:deptId');
+  
+  const deptId = req.params.deptId;
+  console.log('Department ID:', deptId); // Log department ID
+  
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    const result = await connection.execute(
+      `DELETE FROM dept WHERE DEPT_ID = :deptId`,
+      { deptId }
+    );
+
+    await connection.commit();
+    console.log('Transaction committed successfully');
+
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    res.status(200).json({ message: 'Department deleted successfully!' });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
 
 app.post('/api/des', async (req, res) => {
   console.log('Received POST request at /api/des');
-  const { DESIGNATION_NAME,DESIGNATION_DESC} = req.body;
+  const { DESIGNATION_NAME,DESIGNATION_DESC,PROBATION,NOTICE_PRD} = req.body;
 
   try {
     // Connect to Oracle Database
@@ -284,8 +409,8 @@ app.post('/api/des', async (req, res) => {
 
     // Execute the insert query
     const result = await connection.execute(
-      'INSERT INTO designation (DESIGNATION_NAME,DESIGNATION_DESC) VALUES (:DESIGNATION_NAME,:DESIGNATION_DESC)',
-      [DESIGNATION_NAME,DESIGNATION_DESC]
+      'INSERT INTO designation (DESIGNATION_NAME,DESIGNATION_DESC,PROBATION,NOTICE_PRD) VALUES (:DESIGNATION_NAME,:DESIGNATION_DESC,:PROBATION,:NOTICE_PRD)',
+      [DESIGNATION_NAME,DESIGNATION_DESC,PROBATION,NOTICE_PRD]
     );
     console.log('Query executed successfully:', result);
 
@@ -347,28 +472,195 @@ app.get('/api/managedes', async (req, res) => {
   }
 });
 
-// Route to delete a department by ID
-/*app.delete('/api/deletedept/:dept_id', async (req, res) => {
-  const departmentId = req.params.dept_id;
+app.put('/api/update_des/:desId', async (req, res) => {
+  console.log('Received PUT request at /api/update_des/:desId');
+  
+  const desId = req.params.desId;
+  const {
+    DESIGNATION_NAME,
+    DESIGNATION_DESC,
+    PROBATION,
+    NOTICE_PRD,
+    // Add other department details here if needed
+  } = req.body;
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    const result = await connection.execute(
+      `UPDATE designation 
+       SET DESIGNATION_NAME = :DESIGNATION_NAME,
+       DESIGNATION_DESC = :DESIGNATION_DESC,
+       PROBATION=:PROBATION,
+       NOTICE_PRD=:NOTICE_PRD
+       WHERE DESIGNATION_ID = :DESIGNATION_ID`,
+      {
+        DESIGNATION_NAME,
+        DESIGNATION_DESC,
+        PROBATION,
+        NOTICE_PRD,
+        DESIGNATION_ID: desId // Use the deptId from the URL parameter
+      }
+    );
+
+    await connection.commit();
+    console.log('Transaction committed successfully');
+
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    res.status(200).json({ message: 'Designation details updated successfully!' });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.delete('/api/delete_des/:desId', async (req, res) => {
+  console.log('Received DELETE request at /api/delete_des/:desId');
+  
+  const desId = req.params.desId;
+  console.log('Designation ID:', desId); // Log department ID
   
   try {
     const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
     const result = await connection.execute(
-      `DELETE FROM dept WHERE dept_id = :dept_id`, [Number(departmentId)]
+      `DELETE FROM designation WHERE DESIGNATION_ID = :desId`,
+      { desId }
     );
+
     await connection.commit();
+    console.log('Transaction committed successfully');
+
     await connection.close();
-    
-    res.status(200).json({ message: 'Department deleted successfully' });
+    console.log('Connection closed successfully');
+
+    res.status(200).json({ message: 'Department deleted successfully!' });
   } catch (error) {
-    console.error("Error deleting department:", error);
-    res.status(500).json({ error: 'An error occurred while deleting the department' });
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-*/
+
+
+app.get('/api/manageleavetype', async (req, res) => {
+  console.log('Received GET request at /api/manageleavetype');
+
+  try {
+    // Connect to Oracle Database
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    // Execute the query to retrieve all company details
+    const result = await connection.execute(
+      'SELECT * FROM leave_type'
+    );
+
+    // Release the connection
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    if (result.rows.length > 0) {
+      // Construct JSON response with array of company details
+      const manageleave = result.rows.map(row => {
+        const leaveDetails = {};
+        result.metaData.forEach((column, index) => {
+          leaveDetails[column.name] = row[index];
+        });
+        return leaveDetails;
+      });
+
+      // Send company details as JSON response
+      res.status(200).json(manageleave);
+    } else {
+      res.status(404).json({ error: 'No leave found' });
+    }
+  } catch (error) {
+    console.error('Error:', error);
+
+    // Send an error response
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.put('/api/update_leave/:leaveId', async (req, res) => {
+  console.log('Received PUT request at /api/update_leave/:leaveId');
+  
+  const leaveId = req.params.leaveId;
+  const {
+    LEAVE_NAME,
+    LEAVE_DESCRIPTION,
+    NUMBER_DAYS_ALLOWED,
+    // Add other department details here if needed
+  } = req.body;
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    const result = await connection.execute(
+      `UPDATE leave_type 
+       SET LEAVE_NAME = :LEAVE_NAME,
+       LEAVE_DESCRIPTION = :LEAVE_DESCRIPTION,
+       NUMBER_DAYS_ALLOWED = :NUMBER_DAYS_ALLOWED
+       WHERE LEAVE_TYPE_ID = :LEAVE_TYPE_ID`,
+      {
+        LEAVE_NAME,
+        LEAVE_DESCRIPTION,
+        NUMBER_DAYS_ALLOWED,
+        LEAVE_TYPE_ID: leaveId // Use the deptId from the URL parameter
+      }
+    );
+
+    await connection.commit();
+    console.log('Transaction committed successfully');
+
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    res.status(200).json({ message: 'Department details updated successfully!' });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.delete('/api/delete_leave/:leaveId', async (req, res) => {
+  console.log('Received DELETE request at /api/delete_leave/:leaveId');
+  
+  const leaveId = req.params.leaveId;
+  console.log('Leave ID:', leaveId); // Log department ID
+  
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    const result = await connection.execute(
+      `DELETE FROM leave_type WHERE LEAVE_TYPE_ID = :leaveId`,
+      { leaveId }
+    );
+
+    await connection.commit();
+    console.log('Transaction committed successfully');
+
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    res.status(200).json({ message: 'Department deleted successfully!' });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
 app.post('/api/employees', async (req, res) => {
   console.log('Received POST request at /api/employees');
-  const { first_name, middle_name, last_name, age, gender, email, phno, username, password, dept_id, designation_id } = req.body;
+  const { first_name, middle_name, last_name, dob, gender, email, phno, username, password, dept_id, designation_id, doj, father, mother, addr_present, addr_perm } = req.body;
 
   try {
     // Connect to Oracle Database
@@ -377,9 +669,9 @@ app.post('/api/employees', async (req, res) => {
 
     // Execute the insert query
     const result = await connection.execute(
-      'INSERT INTO employee (first_name, middle_name, last_name, age, gender, email, phno, username, password, dept_id, designation_id) ' +
-      'VALUES (:first_name, :middle_name, :last_name, :age, :gender, :email, :phno, :username, :password, :dept_id, :designation_id)',
-      [first_name, middle_name, last_name, age, gender, email, phno, username, password, dept_id, designation_id]
+      'INSERT INTO employee (first_name, middle_name, last_name, dob, gender, email, phno, username, password, dept_id, designation_id, doj, father, mother, addr_present, addr_perm) ' +
+      'VALUES (:first_name, :middle_name, :last_name, :dob, :gender, :email, :phno, :username, :password, :dept_id, :designation_id, :doj, :father, :mother, :addr_present, :addr_perm)',
+      [first_name, middle_name, last_name, dob, gender, email, phno, username, password, dept_id, designation_id ,doj, father, mother, addr_present, addr_perm]
     );
     console.log('Query executed successfully:', result);
 
@@ -445,6 +737,119 @@ app.get('/api/manageemp/:username/:password', async (req, res) => {
   }
 });
 
+app.put('/api/update_employee/:employeeId', async (req, res) => {
+  console.log('Received PUT request at /api/update_employee/:employeeId');
+
+  const employeeId = req.params.employeeId;
+  const {
+    FIRST_NAME,
+    MIDDLE_NAME,
+    LAST_NAME,
+    DOB,
+    DOJ,
+    FATHER,
+    MOTHER,
+    ADDR_PRESENT,
+    ADDR_PERM,
+    GENDER,
+    EMAIL,
+    PHNO,
+    USERNAME,
+    PASSWORD,
+   // dept_id,
+   // designation_id
+  } = req.body;
+
+  try {
+    // Connect to Oracle Database
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    // Execute the update query
+    const result = await connection.execute(
+      `UPDATE employee 
+       SET FIRST_NAME = :FIRST_NAME,
+       MIDDLE_NAME = :MIDDLE_NAME,
+       LAST_NAME = :LAST_NAME,
+       DOB=:DOB,
+       DOJ=:DOJ,
+       FATHER=:FATHER,
+       MOTHER=:MOTHER,
+       ADDR_PRESENT=:ADDR_PRESENT,
+       ADDR_PERM=:ADDR_PERM,       
+       GENDER = :GENDER,
+       EMAIL = :EMAIL,
+       PHNO = :PHNO,
+       USERNAME = :USERNAME,
+       PASSWORD = :PASSWORD
+           
+       WHERE EMPLOYEE_ID = :EMPLOYEE_ID`,
+      {
+        FIRST_NAME,
+        MIDDLE_NAME,
+        LAST_NAME,
+        DOB,
+    DOJ,
+    FATHER,
+    MOTHER,
+    ADDR_PRESENT,
+    ADDR_PERM,
+        GENDER,
+        EMAIL,
+        PHNO,
+        USERNAME,
+        PASSWORD,
+        //dept_id,
+       // designation_id,
+        EMPLOYEE_ID: employeeId // Use the employee_id from the URL parameter
+      }
+    );
+
+    // Commit the transaction
+    await connection.commit();
+    console.log('Transaction committed successfully');
+
+    // Release the connection
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    // Send a success response
+    res.status(200).json({ message: 'Employee details updated successfully!' });
+  } catch (error) {
+    console.error('Error:', error);
+
+    // Send an error response
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+app.delete('/api/delete_emp/:employeeId', async (req, res) => {
+  console.log('Received DELETE request at /api/delete_emp/:employeeId');
+  
+  const employeeId = req.params.employeeId;
+  console.log('Employee ID:', employeeId); // Log department ID
+  
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    const result = await connection.execute(
+      `DELETE FROM employee WHERE EMPLOYEE_ID = :employeeId`,
+      { employeeId }
+    );
+
+    await connection.commit();
+    console.log('Transaction committed successfully');
+
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    res.status(200).json({ message: 'Employee deleted successfully!' });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 app.get('/api/manageemp', async (req, res) => {
   console.log('Received GET request at /api/manageemp');
@@ -964,14 +1369,7 @@ app.post('/api/leaveapp', async (req, res) => {
         console.log('Total days taken:', totalDaysTaken);
         console.log('Leave Type ID:', leave_type_id);
 
-        // Check if leave type is not LOP and apply restriction
-        if (leaveTypeName !== 'LOP' && (leaveCount > 0 || (totalDaysTaken + number_of_days) > 1)) {
-          // Leave has already been taken for the selected leave type in the current month
-          // or total days exceed the limit
-          await connection.close();
-          console.log('Leave application failed due to leave restriction.');
-          return res.status(400).json({ error: 'Leave restriction: Only one leave application allowed per month with maximum 1 day.' });
-        }
+     
 
         // Proceed with the rest of the code if leave restriction conditions are met
         // Insert leave application record
@@ -1112,44 +1510,45 @@ async function updateMonthlyLeaveBalance(connection, employee_id, number_of_days
 
 
 async function updateTotalLeaveBalance(connection, employee_id, leave_type_id, number_of_days) {
-  // Check if leave_bal is null or zero
-  const leaveBalQueryResult = await connection.execute(
-    `SELECT leave_bal FROM leave_application WHERE employee_id = :employee_id AND leave_type_id = :leave_type_id`,
+  // Calculate the total number of days taken for the specified leave type
+  const totalDaysTakenQuery = `
+    SELECT SUM(number_of_days) AS total_days_taken
+    FROM leave_application
+    WHERE employee_id = :employee_id AND leave_type_id = :leave_type_id
+  `;
+  const totalDaysTakenResult = await connection.execute(totalDaysTakenQuery, {
+    employee_id: employee_id,
+    leave_type_id: leave_type_id
+  });
+  const totalDaysTaken = totalDaysTakenResult.rows[0][0] || 0;
+
+  // Fetch the number_days_allowed from the leave_type table
+  const numberDaysAllowedQuery = `
+    SELECT number_days_allowed
+    FROM leave_type
+    WHERE leave_type_id = :leave_type_id
+  `;
+  const numberDaysAllowedResult = await connection.execute(numberDaysAllowedQuery, {
+    leave_type_id: leave_type_id
+  });
+  const numberDaysAllowed = numberDaysAllowedResult.rows[0][0] || 0;
+
+  // Calculate the remaining leave balance
+  const remainingBalance = numberDaysAllowed - totalDaysTaken;
+
+  // Update the leave_bal in leave_application table
+  await connection.execute(
+    `UPDATE leave_application 
+     SET leave_bal = :remaining_balance 
+     WHERE employee_id = :employee_id AND leave_type_id = :leave_type_id`,
     {
-      employee_id: employee_id,
-      leave_type_id: leave_type_id
+      remaining_balance: remainingBalance,
+      leave_type_id: leave_type_id,
+      employee_id: employee_id
     }
   );
-
-  if (leaveBalQueryResult.rows.length === 0 || leaveBalQueryResult.rows[0][0] === null || leaveBalQueryResult.rows[0][0] === 0) {
-    // Update the leave_bal in leave_application table by subtracting number_of_days from number_days_allowed
-    await connection.execute(
-      `UPDATE leave_application la
-       SET la.leave_bal = (
-         SELECT lt.number_days_allowed - la.number_of_days
-         FROM leave_type lt
-         WHERE lt.leave_type_id = :leave_type_id
-       )
-       WHERE la.employee_id = :employee_id AND la.leave_type_id = :leave_type_id`,
-      {
-        leave_type_id: leave_type_id,
-        employee_id: employee_id
-      }
-    );
-  } else {
-    // Update the leave_bal in leave_application table by subtracting number_of_days from leave_bal
-    await connection.execute(
-      `UPDATE leave_application 
-       SET leave_bal = leave_bal - :number_of_days 
-       WHERE employee_id = :employee_id AND leave_type_id = :leave_type_id`,
-      {
-        number_of_days: number_of_days,
-        leave_type_id: leave_type_id,
-        employee_id: employee_id
-      }
-    );
-  }
 }
+
 
 app.get('/api/leavebalance/:employeeId/:leaveType', async (req, res) => {
   const { employeeId, leaveType } = req.params;
@@ -1210,6 +1609,7 @@ app.get('/api/managereq', async (req, res) => {
           la.APPROVED_BYHR,
           la.APPROVED_BY2,
           la.APPROVED_BY3,
+          la.NUMBER_OF_DAYS,
           d.DEPT_SHORT_NAME,
           des.DESIGNATION_NAME
        FROM 
@@ -1305,18 +1705,35 @@ app.put('/api/approve-leave/:applicationId', async (req, res) => {
 
 app.put('/api/reject-leave/:applicationId', async (req, res) => {
   const applicationId = req.params.applicationId;
+  const rejectionReason = req.body.reason; // Get the rejection reason from the request body
   const approvalStatus = 'Rejected';
 
   try {
     const connection = await oracledb.getConnection(dbConfig);
-    const query = `UPDATE leave_application SET approved_byhr = :approvalStatus WHERE application_id = :applicationId`;
-    const result = await connection.execute(query, [approvalStatus, applicationId], { autoCommit: true });
+    const query = `UPDATE leave_application SET approved_byhr = :approvalStatus, rejection_reason = :rejectionReason WHERE application_id = :applicationId`;
+    const result = await connection.execute(query, [approvalStatus, rejectionReason, applicationId], { autoCommit: true });
     await connection.close();
     console.log(`Leave request with ID ${applicationId} rejected successfully`);
     res.status(200).send(`Leave request with ID ${applicationId} rejected successfully`);
   } catch (error) {
     console.error('Error updating approval status:', error);
     res.status(500).send('Failed to update approval status');
+  }
+});
+
+app.get('/api/fetch-approval-statushr/:applicationId', async (req, res) => {
+  const applicationId = req.params.applicationId;
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    const query = `SELECT approved_byhr FROM leave_application WHERE application_id = :applicationId`;
+    const result = await connection.execute(query, [applicationId]);
+    await connection.close();
+    const status = result.rows[0][0]; // Assuming status is in the first column
+    res.status(200).json({ status });
+  } catch (error) {
+    console.error('Error fetching approval status:', error);
+    res.status(500).send('Failed to fetch approval status');
   }
 });
 
@@ -1344,9 +1761,10 @@ app.get('/api/approval-status/:applicationId', async (req, res) => {
 });
 
 
+// Update the approve-leave2 endpoint
 app.put('/api/approve-leave2/:applicationId', async (req, res) => {
   const applicationId = req.params.applicationId;
-  const approvalStatus = 'Approved';
+  const approvalStatus = 'Approved'; // Set the approval status
 
   try {
     const connection = await oracledb.getConnection(dbConfig);
@@ -1361,15 +1779,16 @@ app.put('/api/approve-leave2/:applicationId', async (req, res) => {
   }
 });
 
+// Update the reject-leave2 endpoint
 app.put('/api/reject-leave2/:applicationId', async (req, res) => {
   const applicationId = req.params.applicationId;
-  const approvalStatus = 'Rejected';
-  const reason = req.body.reason; // Extract the rejection reason from the request body
+  const rejectionReason = req.body.reason; // Get the rejection reason from the request body
+  const approvalStatus = 'Rejected'; // Set the rejection status
 
   try {
     const connection = await oracledb.getConnection(dbConfig);
-    const query = `UPDATE leave_application SET approved_by2 = :approvalStatus, rejection_reason = :reason WHERE application_id = :applicationId`;
-    const result = await connection.execute(query, { approvalStatus, reason, applicationId }, { autoCommit: true });
+    const query = `UPDATE leave_application SET approved_by2 = :approvalStatus, rejection_reason = :rejectionReason WHERE application_id = :applicationId`;
+    const result = await connection.execute(query, [approvalStatus, rejectionReason, applicationId], { autoCommit: true });
     await connection.close();
     console.log(`Leave request with ID ${applicationId} rejected successfully`);
     res.status(200).send(`Leave request with ID ${applicationId} rejected successfully`);
@@ -1379,10 +1798,27 @@ app.put('/api/reject-leave2/:applicationId', async (req, res) => {
   }
 });
 
+// Add a new endpoint to fetch approval status
+app.get('/api/fetch-approval-status/:applicationId', async (req, res) => {
+  const applicationId = req.params.applicationId;
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    const query = `SELECT approved_by2 FROM leave_application WHERE application_id = :applicationId`;
+    const result = await connection.execute(query, [applicationId]);
+    await connection.close();
+    const status = result.rows[0][0]; // Assuming status is in the first column
+    res.status(200).json({ status });
+  } catch (error) {
+    console.error('Error fetching approval status:', error);
+    res.status(500).send('Failed to fetch approval status');
+  }
+});
+
 
 app.put('/api/approve-leave3/:applicationId', async (req, res) => {
   const applicationId = req.params.applicationId;
-  const approvalStatus = 'Approved';
+  const approvalStatus = 'Approved'; // Set the approval status
 
   try {
     const connection = await oracledb.getConnection(dbConfig);
@@ -1397,14 +1833,16 @@ app.put('/api/approve-leave3/:applicationId', async (req, res) => {
   }
 });
 
+// Update the reject-leave3 endpoint
 app.put('/api/reject-leave3/:applicationId', async (req, res) => {
   const applicationId = req.params.applicationId;
-  const approvalStatus = 'Rejected';
+  const rejectionReason = req.body.reason; // Get the rejection reason from the request body
+  const approvalStatus = 'Rejected'; // Set the rejection status
 
   try {
     const connection = await oracledb.getConnection(dbConfig);
-    const query = `UPDATE leave_application SET approved_by3 = :approvalStatus WHERE application_id = :applicationId`;
-    const result = await connection.execute(query, [approvalStatus, applicationId], { autoCommit: true });
+    const query = `UPDATE leave_application SET approved_by3 = :approvalStatus, rejection_reason = :rejectionReason WHERE application_id = :applicationId`;
+    const result = await connection.execute(query, [approvalStatus, rejectionReason, applicationId], { autoCommit: true });
     await connection.close();
     console.log(`Leave request with ID ${applicationId} rejected successfully`);
     res.status(200).send(`Leave request with ID ${applicationId} rejected successfully`);
@@ -1414,6 +1852,22 @@ app.put('/api/reject-leave3/:applicationId', async (req, res) => {
   }
 });
 
+// Add a new endpoint to fetch approval status
+app.get('/api/fetch-approval-status3/:applicationId', async (req, res) => {
+  const applicationId = req.params.applicationId;
+
+  try {
+    const connection = await oracledb.getConnection(dbConfig);
+    const query = `SELECT approved_by3 FROM leave_application WHERE application_id = :applicationId`;
+    const result = await connection.execute(query, [applicationId]);
+    await connection.close();
+    const status = result.rows[0][0]; // Assuming status is in the first column
+    res.status(200).json({ status });
+  } catch (error) {
+    console.error('Error fetching approval status:', error);
+    res.status(500).send('Failed to fetch approval status');
+  }
+});
 app.get('/api/leavestatus/:employeeId', async (req, res) => {
   const employeeId = parseInt(req.params.employeeId); // Convert to integer
 
@@ -1526,14 +1980,14 @@ app.get('/api/managesal/:employeeId', async (req, res) => {
     if (result.rows.length > 0) {
       // Construct JSON response with the salary details
       const salaryDetails = {
-        employee_id: parseInt(result.rows[0][0]),
-        basic_pay: parseInt(result.rows[0][1]),
-        hra: parseInt(result.rows[0][2]),
-        da: parseInt(result.rows[0][3]),
-        other_allowance: parseInt(result.rows[0][4]),
-        provident_fund: parseInt(result.rows[0][5]),
-        professional_tax: parseInt(result.rows[0][6]),
-        tot_sal: parseInt(result.rows[0][7])
+        employee_id: parseInt(result.rows[0][7]),
+        basic_pay: parseInt(result.rows[0][0]),
+        hra: parseInt(result.rows[0][1]),
+        da: parseInt(result.rows[0][2]),
+        other_allowance: parseInt(result.rows[0][3]),
+        provident_fund: parseInt(result.rows[0][4]),
+        professional_tax: parseInt(result.rows[0][5]),
+        tot_sal: parseInt(result.rows[0][6])
       };
 
       // Log and send the salary details as JSON response
@@ -1566,14 +2020,14 @@ app.get('/api/employee/:employeeId', async (req, res) => {
     // Execute separate queries to fetch department and designation names
     const deptResult = await connection.execute(
       'SELECT dept_short_name FROM dept WHERE dept_id = :deptId',
-      [result.rows[0][10]] // Assuming dept_id is in the 10th column of the employee table
+      [result.rows[0][11]] // Assuming dept_id is in the 10th column of the employee table
     );
     console.log('Department Result:', deptResult);
 
 
     const designationResult = await connection.execute(
       'SELECT designation_name FROM designation WHERE designation_id = :desigId',
-      [result.rows[0][11]] // Assuming designation_id is in the 11th column of the employee table
+      [result.rows[0][12]] // Assuming designation_id is in the 11th column of the employee table
     );
 
     // Release the connection
@@ -1604,18 +2058,53 @@ app.get('/api/employee/:employeeId', async (req, res) => {
 });
 
 app.get('/api/leave-summary', async (req, res) => {
-  const employeeId = req.query.employeeId; // Retrieve employeeId from query parameters
+  const employeeId = req.query.employeeId;
+  const monthName = req.query.month; // Month is passed as a string
+  const year = req.query.year; // Year is also passed as a string
 
   console.log(`Received request for employeeId: ${employeeId}`);
+  console.log(`Received month: ${monthName}`);
+  console.log(`Received year: ${year}`);
   console.log(`Full request URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
 
+  // Validate employeeId
   if (!employeeId) {
     return res.status(400).json({ error: 'Employee ID is required' });
   }
 
+  // Convert month name to a number
+  const monthMap = {
+    'January': 1,
+    'February': 2,
+    'March': 3,
+    'April': 4,
+    'May': 5,
+    'June': 6,
+    'July': 7,
+    'August': 8,
+    'September': 9,
+    'October': 10,
+    'November': 11,
+    'December': 12
+  };
+
+  const month = monthMap[monthName];
+  if (!month) {
+    return res.status(400).json({ error: 'Invalid month name' });
+  }
+
+  // Convert year to an integer
+  const yearInt = parseInt(year, 10);
+  if (isNaN(yearInt)) {
+    return res.status(400).json({ error: 'Invalid year' });
+  }
+
+  console.log(`Parsed month: ${month}, Parsed year: ${yearInt}`);
+
   try {
     // Connect to the Oracle database
     const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to the database successfully');
 
     // Query to get the sum of leave days for leave_type_id = 41, approved_byhr = 'Approved', and specific employee
     const query = `
@@ -1624,10 +2113,20 @@ app.get('/api/leave-summary', async (req, res) => {
       WHERE leave_type_id = 41
       AND approved_byhr = 'Approved'
       AND employee_id = :employeeId
+      AND EXTRACT(MONTH FROM TO_DATE(start_date, 'YYYY-MM-DD')) = :month
+      AND EXTRACT(YEAR FROM TO_DATE(start_date, 'YYYY-MM-DD')) = :year
     `;
 
-    // Bind the employeeId parameter to the query
-    const result = await connection.execute(query, { employeeId });
+    console.log(`Executing query with employeeId: ${employeeId}, month: ${month}, year: ${yearInt}`);
+
+    // Bind the parameters to the query
+    const result = await connection.execute(query, { 
+      employeeId: employeeId,
+      month: month,
+      year: yearInt
+    });
+
+    console.log('Query executed successfully:', result);
 
     // Get the total leave days from the query result
     const totalLeaveDays = result.rows[0][0];
@@ -1635,6 +2134,7 @@ app.get('/api/leave-summary', async (req, res) => {
 
     // Release the Oracle database connection
     await connection.close();
+    console.log('Database connection closed');
 
     // Send the total leave days as a response
     res.json({ totalLeaveDays });
@@ -1652,8 +2152,1181 @@ app.get('/api/leave-summary', async (req, res) => {
 
 
 
+app.get('/api/monthly_leave_reports/:employeeId', async (req, res) => {
+  const employeeId = parseInt(req.params.employeeId); // Convert to integer
 
-// Start the server
-app.listen(port, '192.168.1.7', () => {
-  console.log(`Server is running at http://192.168.1.7:${port}`);
+  console.log('Received GET request at /api/monthly_leave_reports for employee ID:', req.params.employeeId); // Debugging
+
+  try {
+    console.log('Parsed employee ID:', employeeId); // Debugging
+
+    // Check if employeeId is a valid number
+    if (isNaN(employeeId)) {
+      return res.status(400).json({ error: 'Invalid employee ID' });
+    }
+
+    // Get the current month and year
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // Months are 0-indexed, so add 1 to get the current month
+    const currentYear = now.getFullYear();
+
+    // Connect to Oracle Database
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    // Execute the query to retrieve monthly leave reports for the specific employee
+    const result = await connection.execute(
+      `SELECT * FROM leave_application 
+       WHERE EMPLOYEE_ID = :employeeId 
+       AND EXTRACT(MONTH FROM START_DATE) = :month 
+       AND EXTRACT(YEAR FROM START_DATE) = :year`,
+      [employeeId, currentMonth, currentYear]
+    ); // Use bind variables
+
+    // Release the connection
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    if (result.rows.length > 0) {
+      // Construct JSON response with array of monthly leave reports
+      const monthlyLeaveReports = result.rows.map(row => {
+        const leaveReportDetails = {};
+        result.metaData.forEach((column, index) => {
+          leaveReportDetails[column.name] = row[index];
+        });
+        return leaveReportDetails;
+      });
+
+      // Send monthly leave reports as JSON response
+      res.status(200).json(monthlyLeaveReports);
+    } else {
+      res.status(404).json({ error: 'No monthly leave reports found for the employee for the current month' });
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    // Send an error response
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+const nodemailer = require('nodemailer');
+
+let transporter = nodemailer.createTransport({
+  service: 'Gmail', // Or use any other SMTP service provider
+  auth: {
+      user: 'greeshmatheressa123@gmail.com',
+      pass: 'tgnn evba lpvw tzwo'
+  }
+});
+
+// Define a route to handle POST requests for sending emails
+app.post('/send-email', (req, res) => {
+  const { fromEmail, employeeEmail, ccRecipients, bccRecipients, subject, body } = req.body;
+
+  // Setup email data
+  let mailOptions = {
+      from: fromEmail,
+      to: employeeEmail,
+      cc: ccRecipients,
+      bcc: bccRecipients,
+      subject: subject,
+      text: body
+  };
+
+  // Send email
+  transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+          console.log(error);
+          res.status(500).send('Failed to send email.');
+      } else {
+          console.log('Email sent: %s', info.messageId);
+          res.status(200).send('Email sent successfully.');
+      }
+  });
+});
+
+/*const router = express.Router();
+const nodemailer = require('nodemailer');
+
+// Create a transporter object using SMTP
+const transporter = nodemailer.createTransport({
+  service: 'Gmail', // Or use any other SMTP service provider
+  auth: {
+    user: 'greeshmatheressa123@gmail.com', // Enter your email
+    pass: 'tgnn evba lpvw tzwo' // Enter your email password
+  }
+});
+
+// Route to send email
+router.post('/send-email', async (req, res) => {
+  const { recipientEmail, subject, body } = req.body;
+
+  // Create email message
+  const mailOptions = {
+    from: 'greeshmatheressa123@gmail.com',
+    to: recipientEmail,
+    subject: subject,
+    text: body
+  };
+
+  try {
+    // Send email
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent: ' + info.response);
+    res.status(200).send('Email sent successfully.');
+  } catch (error) {
+    console.log('Error sending email: ', error);
+    res.status(500).send('Failed to send email.');
+  }
+});
+
+module.exports = router;*/
+
+
+app.get('/api/req', async (req, res) => {
+  console.log('Received GET request at /api/req');
+
+  try {
+    // Extract status from request query
+    const { status } = req.query;
+
+    // Connect to Oracle Database
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    // Execute the query to retrieve leave requests with employee names
+    const result = await connection.execute(
+      `SELECT 
+          la.APPLICATION_ID, 
+          la.DATE_OF_APPLICATION, 
+          la.EMPLOYEE_ID, 
+          e.FIRST_NAME || ' ' || COALESCE(e.MIDDLE_NAME || ' ', '') || e.LAST_NAME AS EMPLOYEE_NAME, 
+          la.USER_ID,
+          la.LEAVE_TYPE_ID, 
+          la.START_DATE, 
+          la.END_DATE,
+          la.APPROVED_BYHR,
+          la.APPROVED_BY2,
+          la.APPROVED_BY3,
+          la.NUMBER_OF_DAYS,
+          d.DEPT_SHORT_NAME,
+          des.DESIGNATION_NAME
+       FROM 
+          leave_application la
+       LEFT JOIN 
+          employee e ON la.EMPLOYEE_ID = e.EMPLOYEE_ID
+       LEFT JOIN
+          users u ON la.USER_ID = u.USER_ID
+       LEFT JOIN
+          dept d ON e.DEPT_ID = d.DEPT_ID
+       LEFT JOIN
+          designation des ON e.DESIGNATION_ID = des.DESIGNATION_ID
+       WHERE
+          la.APPROVED_BYHR = :status`, // Replace ":status" with the actual status parameter
+      [status]
+    );
+    
+
+    // Release the connection
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    if (result.rows.length > 0) {
+      // Construct JSON response with leave request details including employee names
+      const managereq = result.rows.map(row => {
+        const reqDetails = {};
+        result.metaData.forEach((column, index) => {
+          reqDetails[column.name] = row[index];
+        });
+        return reqDetails;
+      });
+
+      // Send leave request details as JSON response
+      res.status(200).json(managereq);
+    } else {
+      res.status(404).json({ error: 'No requests found' });
+    }
+  } catch (error) {
+    console.error('Error:', error);
+
+    // Send an error response
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+app.get('/api/pending', async (req, res) => {
+  console.log('Received GET request at /api/pending');
+
+  try {
+    // Extract status from request query
+    const { status } = req.query;
+
+    // Connect to Oracle Database
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    // Execute the query to retrieve leave requests with employee names
+    const result = await connection.execute(
+      `SELECT 
+          la.APPLICATION_ID, 
+          la.DATE_OF_APPLICATION, 
+          la.EMPLOYEE_ID, 
+          e.FIRST_NAME || ' ' || COALESCE(e.MIDDLE_NAME || ' ', '') || e.LAST_NAME AS EMPLOYEE_NAME, 
+          la.USER_ID,
+          la.LEAVE_TYPE_ID, 
+          la.START_DATE, 
+          la.END_DATE,
+          la.APPROVED_BYHR,
+          la.APPROVED_BY2,
+          la.APPROVED_BY3,
+          la.NUMBER_OF_DAYS,
+          d.DEPT_SHORT_NAME,
+          des.DESIGNATION_NAME
+       FROM 
+          leave_application la
+       LEFT JOIN 
+          employee e ON la.EMPLOYEE_ID = e.EMPLOYEE_ID
+       LEFT JOIN
+          users u ON la.USER_ID = u.USER_ID
+       LEFT JOIN
+          dept d ON e.DEPT_ID = d.DEPT_ID
+       LEFT JOIN
+          designation des ON e.DESIGNATION_ID = des.DESIGNATION_ID
+       WHERE
+       la.APPROVED_BYHR IS NULL`,
+    );
+    
+
+    // Release the connection
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    if (result.rows.length > 0) {
+      // Construct JSON response with leave request details including employee names
+      const managereq = result.rows.map(row => {
+        const reqDetails = {};
+        result.metaData.forEach((column, index) => {
+          reqDetails[column.name] = row[index];
+        });
+        return reqDetails;
+      });
+
+      // Send leave request details as JSON response
+      res.status(200).json(managereq);
+    } else {
+      res.status(404).json({ error: 'No requests found' });
+    }
+  } catch (error) {
+    console.error('Error:', error);
+
+    // Send an error response
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
+const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const path = require('path');
+const axios = require('axios');
+const pdfDirectory = path.join(__dirname, 'pdfs');
+if (!fs.existsSync(pdfDirectory)) {
+  fs.mkdirSync(pdfDirectory);
+}
+
+
+const fetchLeaveData = (month, year, status, leaveType) => {
+  let url;
+
+  if (status === 'Pending') {
+    url = `http://192.168.1.34:3000/api/pending?month=${month}&year=${year}`;
+  } else if (status === 'All') {
+    url = `http://192.168.1.34:3000/api/managereq?month=${month}&year=${year}`;
+  } else {
+    url = `http://192.168.1.34:3000/api/req?month=${month}&year=${year}`;
+    if (status) {
+      url += `&status=${status}`;
+    }
+  }
+
+  if (leaveType && leaveType !== 'All') {
+    url += `&leaveType=${leaveType}`;
+  }
+
+  return axios.get(url)
+    .then(response => response.data)
+    .catch(error => {
+      console.error('Error fetching leave data:', error);
+      return [];
+    });
+};
+
+const fetchEmployeeDetails = (employeeId) => {
+  return axios.get(`http://192.168.1.34:3000/api/employee/${employeeId}`)
+    .then(response => {
+      console.log('Employee Details Response:', response.data);
+      const employeeName = response.data?.employee_name || 'Unknown';
+      const deptName = response.data?.dept_name || 'Unknown';
+      return { employeeName, deptName };
+    })
+    .catch(error => {
+      console.error(`Error fetching employee details for ID ${employeeId}:`, error);
+      return { employeeName: 'Unknown', deptName: 'Unknown' };
+    });
+};
+
+const fetchLeaveTypeDetails = (leaveTypeId) => {
+  return axios.get(`http://192.168.1.34:3000/api/leave-type/${leaveTypeId}`)
+    .then(response => response.data)
+    .catch(error => {
+      console.error(`Error fetching leave type details for ID ${leaveTypeId}:`, error);
+      return null;
+    });
+};
+
+app.get('/api/generate-leave-report/:month/:year/:status?', (req, res) => {
+  const { month, year, status } = req.params;
+  const leaveType = req.query.leaveType || 'All';  // Get leave type from query parameters
+
+  console.log(`Generating leave report for ${month}-${year} with status ${status || 'all'} and leave type ${leaveType}`);
+
+  fetchLeaveData(month, year, status, leaveType).then(leaveData => {
+    PDFDocument.create().then(async pdfDoc => {
+      // Use A4 dimensions: 595.28 x 841.89 points
+      let page = pdfDoc.addPage([595.28, 841.89]);
+      const cellPadding = 5; 
+      const logoPath = path.join(__dirname, 'company_logo.png');
+      const logoImageBytes = fs.readFileSync(logoPath);
+
+      const logoImage = await pdfDoc.embedPng(logoImageBytes);
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+      const logoScale = 0.1;
+      const logoDims = logoImage.scale(logoScale);
+      page.drawImage(logoImage, {
+        x: 50,
+        y: page.getHeight() - logoDims.height - 50,
+        width: logoDims.width,
+        height: logoDims.height,
+      });
+
+      const companyName = "Your Company Name";
+      const companyAddressLine1 = "1234 Company Address";
+      const companyAddressLine2 = "City";
+      const companyAddressLine3 = "Country";
+
+      page.drawText(companyName, {
+        x: 50 + logoDims.width + 10,
+        y: page.getHeight() - 90,
+        size: 18,
+        font: boldFont,
+        color: rgb(0, 0, 0),
+      });
+
+      page.drawText(companyAddressLine1, {
+        x: 50 + logoDims.width + 10,
+        y: page.getHeight() - 120,
+        size: 12,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+
+      page.drawText(companyAddressLine2, {
+        x: 50 + logoDims.width + 10,
+        y: page.getHeight() - 140,
+        size: 12,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+
+      page.drawText(companyAddressLine3, {
+        x: 50 + logoDims.width + 10,
+        y: page.getHeight() - 160,
+        size: 12,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+
+      const { width, height } = page.getSize();
+      const fontSize = 12;
+      const margin = 50;
+      let yPosition = height - margin - logoDims.height - 100;
+
+      page.drawText(`Leave Report for ${month} ${year} (${status || 'All'}) (${leaveType})`, {
+        x: margin,
+        y: yPosition,
+        size: 24,
+        font: boldFont,
+        color: rgb(0, 0, 1),
+      });
+
+      yPosition -= 60;
+
+      const headers = ['Application Date', 'Employee Name', 'Department', 'Leave Type', 'Leave Days'];
+      const maxWidths = [110, 150, 90, 90, 90]; // Max widths for other columns
+      const leaveDaysMaxWidth = width - margin - (maxWidths.reduce((a, b) => a + b, 0)) - 20; // Adjust for padding and line thickness
+      const leaveDaysWidth = Math.min(leaveDaysMaxWidth, 80); // Leave Days column width
+
+      const columnWidths = [...maxWidths, leaveDaysWidth];
+
+      // Draw headers
+      headers.forEach((header, headerIndex) => {
+        const headerX = margin + columnWidths.slice(0, headerIndex).reduce((a, b) => a + b, 0);
+        const headerY = yPosition + 30; // Adjust header position as needed
+        const headerHeight = 30; // Adjust header height as needed
+
+        // Draw header background
+        page.drawRectangle({
+          x: headerX,
+          y: headerY - headerHeight,
+          width: columnWidths[headerIndex],
+          height: headerHeight,
+          color: rgb(0.8, 0.8, 0.8), // Light gray background
+          borderColor: rgb(0, 0, 0),
+          borderWidth: 1,
+        });
+
+        // Draw header text
+        page.drawText(header, {
+          x: headerX + cellPadding,
+          y: headerY - headerHeight + cellPadding,
+          size: fontSize,
+          font: boldFont,
+          color: rgb(0, 0, 0), // Black text color
+        });
+      });
+
+      const processLeaveData = (index) => {
+        if (index >= leaveData.length) {
+          // Save PDF and send response
+          return pdfDoc.save().then(pdfBytes => {
+            const pdfFilePath = path.join(pdfDirectory, `leave_report_${month}_${year}${status ? `_${status}` : ''}${leaveType !== 'All' ? `_${leaveType}` : ''}.pdf`);
+            fs.writeFileSync(pdfFilePath, pdfBytes);
+
+            console.log('Leave report PDF generated successfully');
+
+            res.status(200).json({ pdfPath: pdfFilePath });
+          }).catch(error => {
+            console.error('Error saving PDF:', error);
+            res.status(500).send('Error generating leave report PDF');
+          });
+        }
+
+        const leave = leaveData[index];
+
+        fetchEmployeeDetails(leave.EMPLOYEE_ID).then(({ employeeName, deptName }) => {
+          fetchLeaveTypeDetails(leave.LEAVE_TYPE_ID).then(leaveTypeDetails => {
+            const leaveTypeName = leaveTypeDetails ? (leaveTypeDetails.LEAVE_NAME || 'Unknown') : 'Unknown';
+
+            const leaveDetails = [
+              leave.DATE_OF_APPLICATION || 'N/A',
+              employeeName,
+              deptName,
+              leaveTypeName,
+              leave.NUMBER_OF_DAYS ? leave.NUMBER_OF_DAYS.toString() : 'N/A',
+            ];
+
+            // Draw cells
+            leaveDetails.forEach((detail, detailIndex) => {
+              const cellX = margin + columnWidths.slice(0, detailIndex).reduce((a, b) => a + b, 0);
+              const cellY = yPosition;
+              const cellHeight = 30; // Adjust as needed
+
+              // Draw cell background
+              const bgColor = index % 2 === 0 ? rgb(0.9, 0.9, 0.9) : rgb(1, 1, 1); // Alternate row colors
+              page.drawRectangle
+              ({
+                x: cellX,
+                y: cellY - cellHeight,
+                width: columnWidths[detailIndex],
+                height: cellHeight,
+                color: bgColor,
+                borderColor: rgb(0, 0, 0),
+                borderWidth: 1,
+              });
+
+              // Draw cell content
+              page.drawText(detail.toString(), {
+                x: cellX + cellPadding,
+                y: cellY - cellHeight + cellPadding,
+                size: fontSize,
+                font: font,
+                color: rgb(0, 0, 0), // Black text color
+              });
+            });
+
+            // Draw horizontal line between rows
+            page.drawLine({
+              start: { x: margin, y: yPosition - 2 },
+              end: { x: width - margin, y: yPosition - 2 },
+              thickness: 0.5,
+              color: rgb(0.8, 0.8, 0.8),
+            });
+
+            yPosition -= 30; // Increased spacing between rows
+
+            if (yPosition < margin) {
+              // Add new page if there's not enough space
+              page = pdfDoc.addPage([595.28, 841.89]);
+              yPosition = page.getHeight() - margin;
+            }
+
+            // Process next leave data
+            processLeaveData(index + 1);
+          }).catch(error => {
+            console.error('Error fetching leave type details:', error);
+            res.status(500).send('Error generating leave report PDF');
+          });
+        }).catch(error => {
+          console.error('Error fetching employee details:', error);
+          res.status(500).send('Error generating leave report PDF');
+        });
+      };
+
+      // Start processing leave data
+      processLeaveData(0);
+    }).catch(error => {
+      console.error('Error creating PDF document:', error);
+      res.status(500).send('Error generating leave report PDF');
+    });
+  }).catch(error => {
+    console.error('Error fetching leave data:', error);
+    res.status(500).send('Error generating leave report PDF');
+  });
+});
+
+
+app.get('/api/emprprt/:employeeId', async (req, res) => {
+  const employeeId = req.params.employeeId;
+  console.log(`Received GET request at /api/employee for employee ID: ${employeeId}`);
+
+  try {
+    // Connect to Oracle Database
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    // Execute the query to retrieve employee details for the specific employee
+    const result = await connection.execute(
+      'SELECT * FROM employee WHERE employee_id = :empId',
+      [employeeId]
+    );
+
+    // Execute separate queries to fetch department and designation names
+    const deptResult = await connection.execute(
+      'SELECT dept_short_name FROM dept WHERE dept_id = :deptId',
+      [result.rows[0][11]] // Assuming dept_id is in the 10th column of the employee table
+    );
+    console.log('Department Result:', deptResult);
+
+
+    const designationResult = await connection.execute(
+      'SELECT designation_name FROM designation WHERE designation_id = :desigId',
+      [result.rows[0][12]] // Assuming designation_id is in the 11th column of the employee table
+    );
+
+    // Release the connection
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    if (result.rows.length > 0 && deptResult.rows.length > 0 && designationResult.rows.length > 0) {
+      // Construct JSON response with the employee details
+      const employeeDetails = {
+        employee_id: parseInt(result.rows[0][0]),
+        // Construct the employee name by combining first, middle, and last names
+        employee_name: `${result.rows[0][1]} ${result.rows[0][2] ? result.rows[0][2] + ' ' : ''}${result.rows[0][3]}`,
+        doj: result.rows[0][13],
+        dob: result.rows[0][4],
+        gender: result.rows[0][5],
+        email: result.rows[0][6],
+        phno: result.rows[0][7],
+        dept_name: deptResult.rows[0][0], // Fetch department name from deptResult
+        designation_name: designationResult.rows[0][0] // Fetch designation name from designationResult
+        // Add more details as needed
+      };
+
+      // Log and send the employee details as JSON response
+      console.log('Employee Details:', employeeDetails);
+      res.status(200).json(employeeDetails);
+    } else {
+      res.status(404).json({ error: 'Employee details not found' });
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+app.get('/api/empall', async (req, res) => {
+  console.log('Received GET request at /api/empall');
+
+  try {
+    // Connect to Oracle Database
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    // Execute the query to retrieve employee details along with department and designation names
+    const result = await connection.execute(
+      `SELECT e.*, d.DEPT_SHORT_NAME, des.DESIGNATION_NAME 
+      FROM employee e 
+      INNER JOIN dept d ON e.DEPT_ID = d.DEPT_ID
+      INNER JOIN designation des ON e.DESIGNATION_ID = des.DESIGNATION_ID`
+    );
+
+    // Release the connection
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    if (result.rows.length > 0) {
+      // Construct JSON response with array of employee details including department and designation names
+      const manageemp = result.rows.map(row => {
+        const empDetails = {};
+        result.metaData.forEach((column, index) => {
+          empDetails[column.name] = row[index];
+        });
+        return empDetails;
+      });
+
+      // Send employee details as JSON response
+      res.status(200).json(manageemp);
+    } else {
+      res.status(404).json({ error: 'No employee found' });
+    }
+  } catch (error) {
+    console.error('Error:', error);
+
+    // Send an error response
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+app.get('/api/empdata', async (req, res) => {
+  console.log('Received GET request at /api/empdata');
+  const gender = req.query.gender;
+
+  try {
+    // Connect to Oracle Database
+    const connection = await oracledb.getConnection(dbConfig);
+    console.log('Connected to Oracle Database');
+
+    // Execute the query to retrieve employee details along with department and designation names
+    let query;
+    let binds;
+    if (gender === undefined || gender === '') {
+      query = `SELECT e.*, d.DEPT_SHORT_NAME, des.DESIGNATION_NAME 
+              FROM employee e 
+              INNER JOIN dept d ON e.DEPT_ID = d.DEPT_ID
+              INNER JOIN designation des ON e.DESIGNATION_ID = des.DESIGNATION_ID`;
+      binds = {};
+    } else {
+      query = `SELECT e.*, d.DEPT_SHORT_NAME, des.DESIGNATION_NAME 
+              FROM employee e 
+              INNER JOIN dept d ON e.DEPT_ID = d.DEPT_ID
+              INNER JOIN designation des ON e.DESIGNATION_ID = des.DESIGNATION_ID
+              WHERE e.GENDER = :gender`;
+      binds = { gender };
+    }
+
+    const result = await connection.execute(query, binds);
+
+    // Release the connection
+    await connection.close();
+    console.log('Connection closed successfully');
+
+    if (result.rows.length > 0) {
+      // Construct JSON response with array of employee details including department and designation names
+      const manageemp = result.rows.map(row => {
+        const empDetails = {};
+        result.metaData.forEach((column, index) => {
+          empDetails[column.name] = row[index];
+        });
+        return empDetails;
+      });
+
+      // Send employee details as JSON response
+      res.status(200).json(manageemp);
+    } else {
+      // Send an empty array as response when no employees are found
+      res.status(200).json([]);
+    }
+  } catch (error) {
+    console.error('Error fetching employee data:', error);
+
+    // Send an error response
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
+
+const fetchEmpDetails = (employeeId) => {
+  return axios.get(`http://192.168.1.34:3000/api/emprprt/${employeeId}`)
+    .then(response => {
+      console.log('Employee Details Response:', response.data);
+      const employeeId = response.data?.employee_id || 'Unknown';
+      const employeeName = response.data?.employee_name || 'Unknown';
+      const dateOfJoining = response.data?.doj || 'Unknown';
+      const dateOfBirth = response.data?.dob || 'Unknown';
+      const gender = response.data?.gender || 'Unknown';
+      const email = response.data?.email || 'Unknown';
+      const phoneNumber = response.data?.phno || 'Unknown';
+      const username = response.data?.username || 'Unknown';
+      const password = response.data?.password || 'Unknown';
+      const department = response.data?.department || 'Unknown';
+      const designation = response.data?.designation || 'Unknown';
+      return { employeeId, employeeName, dateOfJoining, dateOfBirth, gender, email, phoneNumber, username, password, department, designation };
+    })
+    .catch(error => {
+      console.error(`Error fetching employee details for ID ${employeeId}:`, error);
+      return { 
+        employeeId: 'Unknown',
+        employeeName: 'Unknown', 
+        dateOfJoining: 'Unknown',
+        dateOfBirth: 'Unknown',
+        gender: 'Unknown',
+        email: 'Unknown',
+        phoneNumber: 'Unknown',
+        username: 'Unknown',
+        password: 'Unknown',
+        department: 'Unknown',
+        designation: 'Unknown',
+      };
+    });
+};
+
+
+const fetchEmployeeData = (gender) => {
+  let url;
+  if (gender === null || gender === undefined) {
+    url = 'http://192.168.1.34:3000/api/empall'; // Use the endpoint for fetching all employees
+  } else {
+    url = `http://192.168.1.34:3000/api/empdata?gender=${gender}`; // Use the endpoint for fetching specific gender
+  }
+  return axios.get(url)
+    .then(response => response.data)
+    .catch(error => {
+      console.error('Error fetching employee data:', error);
+      return [];
+    });
+};
+
+
+
+app.get('/api/generate-emp-report/:gender', (req, res) => {
+  const { gender } = req.params;
+
+  let reportTitle = '';
+  let pdfFileName = '';
+
+  if (gender === null || gender === undefined) {
+    reportTitle = 'Employee Report';
+    pdfFileName = 'employee_report_all.pdf';
+  } else {
+    reportTitle = `Employee Report for ${gender}`;
+    pdfFileName = `employee_report_${gender}.pdf`;
+  }
+
+  // Fetch employee data based on gender
+  fetchEmployeeData(gender).then(async (employeeData) => {
+    console.log('Employee Data:', employeeData); 
+    const pdfDoc = await PDFDocument.create();
+    let page = pdfDoc.addPage([595.28, 841.89]); // Use A4 dimensions: 595.28 x 841.89 points
+    const cellPadding = 5;
+    const logoPath = path.join(__dirname, 'company_logo.png');
+    const logoImageBytes = fs.readFileSync(logoPath);
+    const logoImage = await pdfDoc.embedPng(logoImageBytes);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const logoScale = 0.1;
+    const logoDims = logoImage.scale(logoScale);
+
+    // Draw company logo and details
+    page.drawImage(logoImage, {
+      x: 50,
+      y: page.getHeight() - logoDims.height - 50,
+      width: logoDims.width,
+      height: logoDims.height,
+    });
+    const companyName = "Your Company Name";
+    const companyAddressLine1 = "1234 Company Address";
+    const companyAddressLine2 = "City";
+    const companyAddressLine3 = "Country";
+    page.drawText(companyName, {
+      x: 50 + logoDims.width + 10,
+      y: page.getHeight() - 90,
+      size: 18,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+    page.drawText(companyAddressLine1, {
+      x: 50 + logoDims.width + 10,
+      y: page.getHeight() - 120,
+      size: 12,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+    page.drawText(companyAddressLine2, {
+      x: 50 + logoDims.width + 10,
+      y: page.getHeight() - 140,
+      size: 12,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+    page.drawText(companyAddressLine3, {
+      x: 50 + logoDims.width + 10,
+      y: page.getHeight() - 160,
+      size: 12,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+
+    const { width, height } = page.getSize();
+    const fontSize = 12;
+    const margin = 50;
+    let yPosition = height - margin - logoDims.height - 100;
+
+    // Draw report title
+    page.drawText(`Employee Report for ${gender}`, {
+      x: margin,
+      y: yPosition,
+      size: 24,
+      font: boldFont,
+      color: rgb(0, 0, 1),
+    });
+    yPosition -= 60; // Move Y position down after drawing headers
+    // Draw headers for employee data
+    const headers = [
+      'ID', 'Name', 'DOJ', 'DOB', 
+      'Email', 'Ph No'
+    ];
+    const columnWidths = [50, 130, 70, 70, 170,75]; // Max widths for columns
+
+    // Draw headers
+    headers.forEach((header, headerIndex) => {
+      const headerX = margin + columnWidths.slice(0, headerIndex).reduce((a, b) => a + b, 0);
+      const headerY = yPosition + 30; // Adjust header position as needed
+      const headerHeight = 30; // Adjust header height as needed
+
+      // Draw header background
+      page.drawRectangle({
+        x: headerX-30,
+        y: headerY - headerHeight,
+        width: columnWidths[headerIndex],
+        height: headerHeight,
+        color: rgb(0.8, 0.8, 0.8), // Light gray background
+        borderColor: rgb(0, 0, 0),
+        borderWidth: 1,
+      });
+
+      // Draw header text
+      page.drawText(header, {
+        x: headerX-25 ,
+        y: headerY - headerHeight + cellPadding,
+        size: fontSize,
+        font: boldFont,
+        color: rgb(0, 0, 0), // Black text color
+      });
+    });
+
+
+
+    const processEmployeeData = (index) => {
+      if (index >= employeeData.length) {
+        // Save PDF and send response
+        return pdfDoc.save().then(pdfBytes => {
+          const pdfFilePath = path.join(pdfDirectory, `employee_report_${gender}.pdf`);
+          fs.writeFileSync(pdfFilePath, pdfBytes);
+
+          console.log('Employee report PDF generated successfully');
+
+          res.status(200).json({ pdfPath: pdfFilePath });
+        }).catch(error => {
+          console.error('Error saving PDF:', error);
+          res.status(500).send('Error generating employee report PDF');
+        });
+      }
+
+      const employee = employeeData[index];
+
+      fetchEmpDetails(employee.EMPLOYEE_ID).then(details => {
+        // Draw employee details
+        const employeeDetails = [
+          details.employeeId,
+          details.employeeName,
+          details.dateOfJoining,
+          details.dateOfBirth,
+          details.email,
+          details.phoneNumber,
+         
+        ];
+
+        // Draw cells
+        employeeDetails.forEach((detail, detailIndex) => {
+          const cellX = margin + columnWidths.slice(0, detailIndex).reduce((a, b) => a + b, 0);
+          const cellY = yPosition;
+          const cellHeight = 30; // Adjust as needed
+
+          // Draw cell background
+          const bgColor = index % 2 === 0 ? rgb(0.9, 0.9, 0.9) : rgb(1, 1, 1); // Alternate row colors
+          page.drawRectangle({
+            x: cellX-30,
+            y: cellY - cellHeight,
+            width: columnWidths[detailIndex],
+            height: cellHeight,
+            color: bgColor,
+            borderColor: rgb(0, 0, 0),
+            borderWidth: 1,
+          });
+
+          // Draw cell content
+          page.drawText(detail.toString(), {
+            x: cellX-25,
+            y: cellY - cellHeight + cellPadding,
+            size: fontSize,
+            font: font,
+            color: rgb(0, 0, 0), // Black text color
+          });
+        });
+
+        // Draw horizontal line between rows
+        page.drawLine({
+          start: { x: margin, y: yPosition - 2 },
+          end: { x: width - margin, y: yPosition - 2 },
+          thickness: 0.5,
+          color: rgb(0.8, 0.8, 0.8),
+        });
+
+        yPosition -= 30; // Increased spacing between rows
+
+        if (yPosition < margin) {
+          // Add new page if there's not enough space
+          page = pdfDoc.addPage([595.28, 841.89]);
+          yPosition = page.getHeight() - margin;
+        }
+
+        // Process next employee data
+        processEmployeeData(index + 1);
+      }).catch(error => {
+        console.error('Error fetching employee details:', error);
+        res.status(500).send('Error generating employee report PDF');
+      });
+    };
+
+    // Start processing employee data
+    processEmployeeData(0);
+  }).catch(error => {
+    console.error('Error fetching employee data:', error);
+    res.status(500).send('Error generating employee report PDF');
+  });
+});
+
+
+app.get('/api/generate-emp-report-all', (req, res) => {
+  const { gender } = req.params;
+
+ 
+
+  // Fetch employee data based on gender
+  fetchEmployeeData().then(async (employeeData) => {
+    console.log('Employee Data:', employeeData); 
+    const pdfDoc = await PDFDocument.create();
+    let page = pdfDoc.addPage([595.28, 841.89]); // Use A4 dimensions: 595.28 x 841.89 points
+    const cellPadding = 5;
+    const logoPath = path.join(__dirname, 'company_logo.png');
+    const logoImageBytes = fs.readFileSync(logoPath);
+    const logoImage = await pdfDoc.embedPng(logoImageBytes);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const logoScale = 0.1;
+    const logoDims = logoImage.scale(logoScale);
+
+    // Draw company logo and details
+    page.drawImage(logoImage, {
+      x: 50,
+      y: page.getHeight() - logoDims.height - 50,
+      width: logoDims.width,
+      height: logoDims.height,
+    });
+    const companyName = "Your Company Name";
+    const companyAddressLine1 = "1234 Company Address";
+    const companyAddressLine2 = "City";
+    const companyAddressLine3 = "Country";
+    page.drawText(companyName, {
+      x: 50 + logoDims.width + 10,
+      y: page.getHeight() - 90,
+      size: 18,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+    page.drawText(companyAddressLine1, {
+      x: 50 + logoDims.width + 10,
+      y: page.getHeight() - 120,
+      size: 12,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+    page.drawText(companyAddressLine2, {
+      x: 50 + logoDims.width + 10,
+      y: page.getHeight() - 140,
+      size: 12,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+    page.drawText(companyAddressLine3, {
+      x: 50 + logoDims.width + 10,
+      y: page.getHeight() - 160,
+      size: 12,
+      font: font,
+      color: rgb(0, 0, 0),
+    });
+
+    const { width, height } = page.getSize();
+    const fontSize = 12;
+    const margin = 50;
+    let yPosition = height - margin - logoDims.height - 100;
+
+    // Draw report title
+    page.drawText(`Employee Report`, {
+      x: margin,
+      y: yPosition,
+      size: 24,
+      font: boldFont,
+      color: rgb(0, 0, 1),
+    });
+    yPosition -= 60; // Move Y position down after drawing headers
+    // Draw headers for employee data
+    const headers = [
+      'ID', 'Name', 'DOJ', 'DOB', 
+      'Email', 'Ph No'
+    ];
+    const columnWidths = [50, 130, 70, 70, 170,75]; // Max widths for columns
+
+    // Draw headers
+    headers.forEach((header, headerIndex) => {
+      const headerX = margin + columnWidths.slice(0, headerIndex).reduce((a, b) => a + b, 0);
+      const headerY = yPosition + 30; // Adjust header position as needed
+      const headerHeight = 30; // Adjust header height as needed
+
+      // Draw header background
+      page.drawRectangle({
+        x: headerX-30,
+        y: headerY - headerHeight,
+        width: columnWidths[headerIndex],
+        height: headerHeight,
+        color: rgb(0.8, 0.8, 0.8), // Light gray background
+        borderColor: rgb(0, 0, 0),
+        borderWidth: 1,
+      });
+
+      // Draw header text
+      page.drawText(header, {
+        x: headerX-25 ,
+        y: headerY - headerHeight + cellPadding,
+        size: fontSize,
+        font: boldFont,
+        color: rgb(0, 0, 0), // Black text color
+      });
+    });
+
+
+
+    const processEmployeeData = (index) => {
+      if (index >= employeeData.length) {
+        // Save PDF and send response
+        return pdfDoc.save().then(pdfBytes => {
+          const pdfFilePath = path.join(pdfDirectory, `employee_report.pdf`);
+          fs.writeFileSync(pdfFilePath, pdfBytes);
+
+          console.log('Employee report PDF generated successfully');
+
+          res.status(200).json({ pdfPath: pdfFilePath });
+        }).catch(error => {
+          console.error('Error saving PDF:', error);
+          res.status(500).send('Error generating employee report PDF');
+        });
+      }
+
+      const employee = employeeData[index];
+
+      fetchEmpDetails(employee.EMPLOYEE_ID).then(details => {
+        // Draw employee details
+        const employeeDetails = [
+          details.employeeId,
+          details.employeeName,
+          details.dateOfJoining,
+          details.dateOfBirth,
+          details.email,
+          details.phoneNumber,
+         
+        ];
+
+        // Draw cells
+        employeeDetails.forEach((detail, detailIndex) => {
+          const cellX = margin + columnWidths.slice(0, detailIndex).reduce((a, b) => a + b, 0);
+          const cellY = yPosition;
+          const cellHeight = 30; // Adjust as needed
+
+          // Draw cell background
+          const bgColor = index % 2 === 0 ? rgb(0.9, 0.9, 0.9) : rgb(1, 1, 1); // Alternate row colors
+          page.drawRectangle({
+            x: cellX-30,
+            y: cellY - cellHeight,
+            width: columnWidths[detailIndex],
+            height: cellHeight,
+            color: bgColor,
+            borderColor: rgb(0, 0, 0),
+            borderWidth: 1,
+          });
+
+          // Draw cell content
+          page.drawText(detail.toString(), {
+            x: cellX-25,
+            y: cellY - cellHeight + cellPadding,
+            size: fontSize,
+            font: font,
+            color: rgb(0, 0, 0), // Black text color
+          });
+        });
+
+        // Draw horizontal line between rows
+        page.drawLine({
+          start: { x: margin, y: yPosition - 2 },
+          end: { x: width - margin, y: yPosition - 2 },
+          thickness: 0.5,
+          color: rgb(0.8, 0.8, 0.8),
+        });
+
+        yPosition -= 30; // Increased spacing between rows
+
+        if (yPosition < margin) {
+          // Add new page if there's not enough space
+          page = pdfDoc.addPage([595.28, 841.89]);
+          yPosition = page.getHeight() - margin;
+        }
+
+        // Process next employee data
+        processEmployeeData(index + 1);
+      }).catch(error => {
+        console.error('Error fetching employee details:', error);
+        res.status(500).send('Error generating employee report PDF');
+      });
+    };
+
+    // Start processing employee data
+    processEmployeeData(0);
+  }).catch(error => {
+    console.error('Error fetching employee data:', error);
+    res.status(500).send('Error generating employee report PDF');
+  });
+});
+
+
+
+
+app.listen(port, '192.168.1.34', () => {
+  console.log(`Server is running at http://192.168.1.34:${port}`);
 });
