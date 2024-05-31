@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:lmpp/pages/login.dart';
 
 void main() {
   runApp(MyApp());
@@ -48,8 +50,8 @@ class _financescreenState extends State<financescreen> {
 
   @override
   Widget build(BuildContext context) {
-    print('itscreen - Employee ID: ${widget.employeeId}');
-    return Scaffold(
+    print('financescreen - Employee ID: ${widget.employeeId}');
+     return Scaffold(
       key: _scaffoldKey,
       body: Row(
         children: [
@@ -59,7 +61,7 @@ class _financescreenState extends State<financescreen> {
             child: Drawer(
               elevation: 0,
               child: Container(
-                color: Colors.blueGrey,
+                color: const Color.fromARGB(255, 25, 45, 56),
                 padding: EdgeInsets.zero,
                 child: ListView(
                   padding: EdgeInsets.zero,
@@ -68,7 +70,7 @@ class _financescreenState extends State<financescreen> {
                       height: 120,
                       child: DrawerHeader(
                         decoration: BoxDecoration(
-                          color: Colors.blueGrey,
+                          color: const Color.fromARGB(255, 25, 45, 56),
                         ),
                         child: Row(
                           children: [
@@ -88,6 +90,7 @@ class _financescreenState extends State<financescreen> {
                       ),
                     ),
                     ListTile(
+                      leading: Icon(Icons.dashboard, color: Colors.white),
                       tileColor: Colors.blueGrey,
                       title: Text(
                         'Dashboard',
@@ -99,6 +102,7 @@ class _financescreenState extends State<financescreen> {
                       },
                     ),
                     ListTile(
+                      leading: Icon(Icons.person, color: Colors.white),
                       tileColor: Colors.blueGrey,
                       title: Text(
                         'Employees',
@@ -115,6 +119,7 @@ class _financescreenState extends State<financescreen> {
                       },
                     ),
                     ListTile(
+                      leading: Icon(Icons.work, color: Colors.white),
                       tileColor: Colors.blueGrey,
                       title: Text(
                         'Departments',
@@ -131,6 +136,7 @@ class _financescreenState extends State<financescreen> {
                       },
                     ),
                     ListTile(
+                      leading: Icon(Icons.business, color: Colors.white),
                       tileColor: Colors.blueGrey,
                       title: Text(
                         'Designations',
@@ -147,6 +153,7 @@ class _financescreenState extends State<financescreen> {
                       },
                     ),
                     ListTile(
+                      leading: Icon(Icons.pending_actions, color: Colors.white),
                       tileColor: Colors.blueGrey,
                       title: Text(
                         'Leave Requests',
@@ -162,18 +169,21 @@ class _financescreenState extends State<financescreen> {
                         });
                       },
                     ),
+                   /* ListTile(
+  leading: Icon(Icons.event_note, color: Colors.white),
+  tileColor: Colors.blueGrey,
+  title: Text(
+    'Apply Leave',
+    style: TextStyle(color: Colors.white),
+  ),
+  onTap: () {
+    final String id = widget.employeeId ?? ''; // Provide a default value if employeeId is null
+    _showApplyLeaveForm(context, id);
+  },
+),
+
                     ListTile(
-                      tileColor: Colors.blueGrey,
-                      title: Text(
-                        'Apply Leave',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      onTap: () {
-                        
-                        _showApplyLeaveForm(context);
-                      },
-                    ),
-                    ListTile(
+                      leading: Icon(Icons.history, color: Colors.white),
                       tileColor: Colors.blueGrey,
                       title: Text(
                         'Leave Status',
@@ -191,7 +201,17 @@ class _financescreenState extends State<financescreen> {
                         });
   
                       },
-                    ),
+                    ),*/
+                     ListTile(
+                        leading: Icon(Icons.logout, color: Colors.white),
+                        title: Text(
+                          'Logout',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        onTap: () {
+                          _logout(context);
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -224,8 +244,15 @@ class _financescreenState extends State<financescreen> {
       ),
     );
   }
-
-  void _showApplyLeaveForm(BuildContext context) async {
+void _logout(BuildContext context) {
+  // Implement your logout logic here
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (context) => RetrieveEmployeeScreen()), // Replace MainScreen with the actual name of your main screen widget
+    (route) => false, // This will remove all previous routes
+  );
+}
+  void _showApplyLeaveForm(BuildContext context, String employeeId) async {
     DateTime? startDate;
     DateTime? endDate;
     DateTime applicationDate = DateTime.now();
@@ -236,7 +263,6 @@ class _financescreenState extends State<financescreen> {
     TextEditingController applicationDateController =
         TextEditingController(text: "${applicationDate.day.toString().padLeft(2, '0')}-${applicationDate.month.toString().padLeft(2, '0')}-${applicationDate.year}");
 
-     String? employeeId = widget.employeeId; // Initialize employeeId
 
     showDialog(
   context: context,
@@ -360,7 +386,7 @@ class _financescreenState extends State<financescreen> {
     final String formattedEndDate = endDate != null ? dateFormat.format(endDate!) : ''; // Format the end date
     final String formattedApplicationDate = dateFormat.format(applicationDate);
 
-    final String serverUrl = 'http://192.168.1.7:3000/api/leaveapp';
+    final String serverUrl = 'http://192.168.1.34:3000/api/leaveapp';
     try {
       final leaveTypeId = await _fetchLeaveTypeId(_selectedLeaveType);
       if (leaveTypeId == null) {
@@ -415,7 +441,7 @@ class _financescreenState extends State<financescreen> {
   Future<void> _fetchLeaveTypes() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/manageleave'),
+        Uri.parse('http://192.168.1.34:3000/api/manageleave'),
       );
 
       if (response.statusCode == 200) {
@@ -442,7 +468,7 @@ class _financescreenState extends State<financescreen> {
 Future<String?> _fetchLeaveTypeId(String leaveName) async {
   try {
     final response = await http.get(
-      Uri.parse('http://192.168.1.7:3000/api/manageleave?name=$leaveName'),
+      Uri.parse('http://192.168.1.34:3000/api/manageleave?name=$leaveName'),
     );
 
     if (response.statusCode == 200) {
@@ -470,33 +496,87 @@ Future<String?> _fetchLeaveTypeId(String leaveName) async {
 }
 }
 
+
 class MainContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       child: Container(
-        padding: EdgeInsets.all(20.0),
+        padding: EdgeInsets.fromLTRB(5.0, 10.0, 20.0, 300.0),
         child: Column(
           children: [
             Text(
-              'Dashboard',
+              'My Dashboard',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 20),
-            GridView.count(
-              crossAxisCount: 3,
-              crossAxisSpacing: 5,
-              mainAxisSpacing: 5,
+            SizedBox(height: 50),
+            GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 2.1 / 0.6, // Adjust this ratio for rectangle
+              ),
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
-              children: [
-                DashboardCard(icon: Icons.person, title: 'Employees', value: '55', iconColor: Colors.orange),
-                DashboardCard(icon: Icons.airplane_ticket, title: 'Leave', value: '25', iconColor: Colors.green),
-                DashboardCard(icon: Icons.check, title: 'Approved', value: '34', iconColor: Colors.blue),
-                DashboardCard(icon: Icons.info, title: 'Pending', value: '12', iconColor: Colors.orange),
-                DashboardCard(icon: Icons.delete, title: 'Canceled', value: '15', iconColor: Colors.red),
-              ],
+              itemCount: 5, // Number of cards
+             itemBuilder: (context, index) {
+  String title;
+  IconData icon;
+  Color iconColor;
+  int value;
+
+  switch (index) {
+    case 0:
+      title = 'Employees';
+      icon = Icons.person;
+      iconColor = Colors.orange;
+      value = 50;
+      break;
+    case 1:
+      title = 'Leave';
+      icon = Icons.event;
+      iconColor = Colors.blue;
+      value = 20;
+      break;
+    case 2:
+      title = 'Approved';
+      icon = Icons.check;
+      iconColor = Colors.green;
+      value = 12;
+      break;
+    case 3:
+      title = 'Pending';
+      icon = Icons.info;
+      iconColor = Colors.yellow;
+      value = 5;
+      break;
+    case 4:
+      title = 'Rejected';
+      icon = Icons.delete;
+      iconColor = Colors.red;
+      value = 2;
+      break;
+    default:
+      title = '';
+      icon = Icons.error;
+      iconColor = Colors.grey;
+      value = 0;  // Assign a default value here
+  }
+
+  return Container(
+    width: 120,  // Set a fixed width
+    height: 0,   // Set a fixed height
+    child: DashboardCard(
+      icon: icon,
+      title: title,
+      value: value,  // You can set the actual value here
+      iconColor: iconColor,
+    ),
+  );
+
+              },
             ),
           ],
         ),
@@ -508,43 +588,51 @@ class MainContent extends StatelessWidget {
 class DashboardCard extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String value;
+  final int value;
   final Color iconColor;
 
-  DashboardCard({required this.icon, required this.title, required this.value, required this.iconColor});
+  DashboardCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.iconColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 500,
-      height: 10,
-      padding: EdgeInsets.all(16),
-      child: Card(
-        elevation: 3,
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 70, color: iconColor),
-              SizedBox(height: 10),
-              Text(
-                title,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 5),
-              Text(
-                value,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
+    return Card(
+      elevation: 10,  // Increased elevation for shadow
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(5),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(icon, size: 30, color: iconColor),
+            SizedBox(width: 10), // Add some space between icon and title
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 19),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  value.toString(),  // Convert int to String here
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 }
-
 
 class ManageDepartmentPage extends StatefulWidget {
   @override
@@ -555,7 +643,7 @@ class _ManageDepartmentPageState extends State<ManageDepartmentPage> {
   Future<List<Map<String, dynamic>>> _fetchDepartments() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/managedept'),
+        Uri.parse('http://192.168.1.34:3000/api/managedept'),
       );
 
       if (response.statusCode == 200) {
@@ -586,11 +674,11 @@ class _ManageDepartmentPageState extends State<ManageDepartmentPage> {
     print('Delete department at index: $index');
   }
 
-  @override
+ @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Container(
-        padding: EdgeInsets.all(20.0),
+        padding: EdgeInsets.fromLTRB(5.0, 10.0, 20.0, 180.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -599,55 +687,61 @@ class _ManageDepartmentPageState extends State<ManageDepartmentPage> {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 20),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: _fetchDepartments(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else {
-                  final departments = snapshot.data!;
-                  return DataTable(
-                    columns: [
-                      DataColumn(label: Text('Department Name')),
-                      DataColumn(label: Text('Department Short Name')),
-                      DataColumn(label: Text('Creation Date')),
-                      DataColumn(label: Text('Action')), // Added action column
-                    ],
-                    rows: departments.map((department) {
-                      // Format the date to display only the date part
-                      DateTime creationDate = DateTime.parse(department['CREATION_DATE']);
-                      String formattedDate = DateFormat('yyyy-MM-dd').format(creationDate);
+            Card(
+              elevation: 4, // Add elevation for shadow effect
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _fetchDepartments(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else {
+                      final departments = snapshot.data!;
+                      return DataTable(
+                        headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey[200]!), // Color for heading row
+                        dataRowColor: MaterialStateColor.resolveWith((states) => Colors.white), // Color for data rows
+                        columns: [
+                          DataColumn(label: _buildDataColumnText('Department Name')),
+                          DataColumn(label: _buildDataColumnText('Department Short Name')),
+                        //  DataColumn(label: _buildDataColumnText('Creation Date')),
+                         // DataColumn(label: _buildDataColumnText('Action')), // Added action column
+                        ],
+                        rows: departments.map((department) {
+                          // Format the date to display only the date part
+                         // DateTime creationDate = DateTime.parse(department['CREATION_DATE']);
+                          //String formattedDate = DateFormat('yyyy-MM-dd').format(creationDate);
 
-                      return DataRow(cells: [
-                        DataCell(Text(department['DEPT_NAME'])),
-                        DataCell(Text(department['DEPT_SHORT_NAME'])),
-                        DataCell(Text(formattedDate)), // Display the formatted date
-                        DataCell(Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit),
-                              onPressed: () => _editDepartment(departments.indexOf(department)),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete),
-                              onPressed: () => _deleteDepartment(departments.indexOf(department)),
-                            ),
-                          ],
-                        )),
-                      ]);
-                    }).toList(),
-                  );
-                }
-              },
+                          return DataRow(cells: [
+                            DataCell(Text(department['DEPT_NAME'], style: TextStyle(fontWeight: FontWeight.bold))),
+                            DataCell(Text(department['DEPT_SHORT_NAME'], style: TextStyle(fontWeight: FontWeight.bold))),
+                          //  DataCell(Text(formattedDate, style: TextStyle(fontStyle: FontStyle.italic))),
+                           
+                          ]);
+                        }).toList(),
+                      );
+                    }
+                  },
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
   }
-}
+
+  Widget _buildDataColumnText(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.black,
+      ),
+    );
+  }}
 
 class ManageDesignationPage extends StatefulWidget {
   @override
@@ -658,7 +752,7 @@ class _ManageDesignationPageState extends State<ManageDesignationPage> {
   Future<List<Map<String, dynamic>>> _fetchDesignations() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/managedes'),
+        Uri.parse('http://192.168.1.34:3000/api/managedes'),
       );
 
       if (response.statusCode == 200) {
@@ -689,11 +783,11 @@ class _ManageDesignationPageState extends State<ManageDesignationPage> {
     print('Delete designation at index: $index');
   }
 
-  @override
+   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Container(
-        padding: EdgeInsets.all(20.0),
+        padding: EdgeInsets.fromLTRB(5.0, 10.0, 20.0, 180.0), // Adjust padding
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -702,57 +796,61 @@ class _ManageDesignationPageState extends State<ManageDesignationPage> {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 20),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: _fetchDesignations(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else {
-                  final designations = snapshot.data!;
-                  return DataTable(
-                    columns: [
-                      DataColumn(label: Text('Designation Name')),
-                      DataColumn(label: Text('Designation Description')),
-                      DataColumn(label: Text('Creation Date')),
-                      DataColumn(label: Text('Action')), // Added action column
-                    ],
-                    rows: designations.map((designation) {
-                      // Format the date to display only the date part
-                      DateTime creationDate = DateTime.parse(designation['CREATION_DATE']);
-                      String formattedDate = DateFormat('yyyy-MM-dd').format(creationDate);
+            Card(
+              elevation: 4, // Add elevation for shadow effect
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _fetchDesignations(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else {
+                      final designations = snapshot.data!;
+                      return DataTable(
+                        headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey[200]!), // Color for heading row
+                        dataRowColor: MaterialStateColor.resolveWith((states) => Colors.white), // Color for data rows
+                        columns: [
+                          DataColumn(label: _buildDataColumnText('Designation Name')),
+                          DataColumn(label: _buildDataColumnText('Designation Description')),
+                         // DataColumn(label: _buildDataColumnText('Creation Date')),
+                         // DataColumn(label: _buildDataColumnText('Action')), // Added action column
+                        ],
+                        rows: designations.map((designation) {
+                          // Format the date to display only the date part
+                          //DateTime creationDate = DateTime.parse(designation['CREATION_DATE']);
+                        //  String formattedDate = DateFormat('yyyy-MM-dd').format(creationDate);
 
-                      return DataRow(cells: [
-                        DataCell(Text(designation['DESIGNATION_NAME'])),
-                        DataCell(Text(designation['DESIGNATION_DESC'])),
-                        DataCell(Text(formattedDate)), // Display the formatted date
-                        DataCell(Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit),
-                              onPressed: () => _editDesignation(designations.indexOf(designation)),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete),
-                              onPressed: () => _deleteDesignation(designations.indexOf(designation)),
-                            ),
-                          ],
-                        )),
-                      ]);
-                    }).toList(),
-                  );
-                }
-              },
+                          return DataRow(cells: [
+                            DataCell(Text(designation['DESIGNATION_NAME'], style: TextStyle(fontWeight: FontWeight.bold))),
+                            DataCell(Text(designation['DESIGNATION_DESC'], style: TextStyle(fontWeight: FontWeight.bold))),
+                           // DataCell(Text(formattedDate, style: TextStyle(fontStyle: FontStyle.italic))),
+                     
+                          ]);
+                        }).toList(),
+                      );
+                    }
+                  },
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-
+  Widget _buildDataColumnText(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.black,
+      ),
+    );
+  }}
 
 class ManageEmployeePage extends StatefulWidget {
   @override
@@ -763,7 +861,7 @@ class _ManageEmployeePageState extends State<ManageEmployeePage> {
  Future<List<Map<String, dynamic>>> _fetchEmployees() async {
   try {
     final response = await http.get(
-      Uri.parse('http://192.168.1.7:3000/api/manageemp'),
+      Uri.parse('http://192.168.1.34:3000/api/manageemp'),
     );
 
     if (response.statusCode == 200) {
@@ -796,7 +894,7 @@ class _ManageEmployeePageState extends State<ManageEmployeePage> {
 Future<String> getDepartmentName(int departmentId) async {
   try {
     final response = await http.get(
-      Uri.parse('http://192.168.1.7:3000/api/department/$departmentId'),
+      Uri.parse('http://192.168.1.34:3000/api/department/$departmentId'),
     );
 
     if (response.statusCode == 200) {
@@ -814,7 +912,7 @@ Future<String> getDepartmentName(int departmentId) async {
 Future<String> getDesignationName(int designationId) async {
   try {
     final response = await http.get(
-      Uri.parse('http://192.168.1.7:3000/api/designation/$designationId'),
+      Uri.parse('http://192.168.1.34:3000/api/designation/$designationId'),
     );
 
     if (response.statusCode == 200) {
@@ -841,90 +939,90 @@ Future<String> getDesignationName(int designationId) async {
   }
 
 @override
-Widget build(BuildContext context) {
-  return SingleChildScrollView(
-    scrollDirection: Axis.horizontal, // Allow horizontal scrolling
-    child: SingleChildScrollView(
-      child: Container(
-        padding: EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Manage Employee',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 20),
-            FutureBuilder<List<Map<String, dynamic>>>(
-  future: _fetchEmployees(),
-  builder: (context, snapshot) {
-    if (snapshot.connectionState == ConnectionState.waiting) {
-      return Center(child: CircularProgressIndicator());
-    } else if (snapshot.hasError) {
-      return Center(child: Text('Error: ${snapshot.error}'));
-    } else {
-      final employees = snapshot.data!;
-      print('Data types of employee values:');
-      print(employees.map((e) => e.map((k, v) => MapEntry(k, v.runtimeType))));
-      return DataTable(
-        columns: [
-          DataColumn(label: Text('Employee ID')),
-          DataColumn(label: Text('First Name')),
-          DataColumn(label: Text('Middle Name')),
-          DataColumn(label: Text('Last Name')),
-          DataColumn(label: Text('Age')),
-          DataColumn(label: Text('Gender')),
-          DataColumn(label: Text('Email')),
-          DataColumn(label: Text('Phone Number')),
-          DataColumn(label: Text('Username')),
-          DataColumn(label: Text('Password')),
-          DataColumn(label: Text('Department')),
-          DataColumn(label: Text('Designation')),
-          DataColumn(label: Text('Action')), // Added action column
-        ],
-       // Rows inside DataTable widget
-rows: employees.map((employee) {
-  return DataRow(cells: [
-    DataCell(Text(employee['EMPLOYEE_ID'].toString())),
-    DataCell(Text(employee['FIRST_NAME'].toString())),
-    DataCell(Text(employee['MIDDLE_NAME'].toString())),
-    DataCell(Text(employee['LAST_NAME'].toString())),
-    DataCell(Text(employee['AGE'].toString())),
-    DataCell(Text(employee['GENDER'].toString())),
-    DataCell(Text(employee['EMAIL'].toString())),
-    DataCell(Text(employee['PHNO'].toString())),
-    DataCell(Text(employee['USERNAME'].toString())),
-    DataCell(Text(employee['PASSWORD'].toString())),
-    DataCell(Text(employee['DEPT_SHORT_NAME'].toString())), // Display department name
-    DataCell(Text(employee['DESIGNATION_NAME'].toString())), // Display designation name
-    DataCell(Row(
-      children: [
-        IconButton(
-          icon: Icon(Icons.edit),
-          onPressed: () => _editEmployee(employees.indexOf(employee)),
-        ),
-        IconButton(
-          icon: Icon(Icons.delete),
-          onPressed: () => _deleteEmployee(employees.indexOf(employee)),
-        ),
-      ],
-    )),
-  ]);
-}).toList(),
-
-      );
-    }
-  },
-),
-
-          ],
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal, // Allow horizontal scrolling
+      child: SingleChildScrollView(
+        child: Container(
+          padding: EdgeInsets.fromLTRB(5.0, 10.0, 20.0, 180.0), // Adjust padding
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Manage Employee',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 20),
+              Card(
+                elevation: 4, // Add elevation for shadow effect
+                child: Padding(
+                  padding: EdgeInsets.all(10),
+                  child: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _fetchEmployees(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      } else {
+                        final employees = snapshot.data!;
+                        return DataTable(
+                          headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey[200]!), // Color for heading row
+                          dataRowColor: MaterialStateColor.resolveWith((states) => Colors.white), // Color for data rows
+                          columns: [
+                            DataColumn(label: _buildDataColumnText('Employee ID')),
+                            DataColumn(label: _buildDataColumnText('First Name')),
+                            DataColumn(label: _buildDataColumnText('Middle Name')),
+                            DataColumn(label: _buildDataColumnText('Last Name')),
+                            DataColumn(label: _buildDataColumnText('Age')),
+                            DataColumn(label: _buildDataColumnText('Gender')),
+                            DataColumn(label: _buildDataColumnText('Email')),
+                            DataColumn(label: _buildDataColumnText('Phone Number')),
+                            DataColumn(label: _buildDataColumnText('Username')),
+                            DataColumn(label: _buildDataColumnText('Password')),
+                            DataColumn(label: _buildDataColumnText('Department')),
+                            DataColumn(label: _buildDataColumnText('Designation')),
+                          //  DataColumn(label: _buildDataColumnText('Action')), // Added action column
+                          ],
+                          rows: employees.map((employee) {
+                            return DataRow(cells: [
+                              DataCell(Text(employee['EMPLOYEE_ID'].toString(), style: TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Text(employee['FIRST_NAME'].toString(), style: TextStyle(fontWeight: FontWeight.bold))),
+    DataCell(Text(employee['MIDDLE_NAME'] != null ? employee['MIDDLE_NAME'].toString() : '', style: TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Text(employee['LAST_NAME'].toString(), style: TextStyle(fontWeight: FontWeight.bold))),
+                              DataCell(Text(employee['AGE'].toString())),
+                              DataCell(Text(employee['GENDER'].toString())),
+                              DataCell(Text(employee['EMAIL'].toString())),
+                              DataCell(Text(employee['PHNO'].toString())),
+                              DataCell(Text(employee['USERNAME'].toString())),
+                              DataCell(Text(employee['PASSWORD'].toString())),
+                              DataCell(Text(employee['DEPT_SHORT_NAME'].toString())),
+                              DataCell(Text(employee['DESIGNATION_NAME'].toString())),
+                             
+                            ]);
+                          }).toList(),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}}
+    );
+  }
 
-
+  Widget _buildDataColumnText(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.black,
+      ),
+    );
+  }}
 
 class LeaveRequestPage extends StatefulWidget {
   @override
@@ -932,10 +1030,22 @@ class LeaveRequestPage extends StatefulWidget {
 }
 
 class _LeaveRequestPageState extends State<LeaveRequestPage> {
+  Map<int, bool?> _approvalStatusMap = {};
+  Map<int, String> _rejectionReasonsMap = {};
+  
+
+
+
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
   Future<List<Map<String, dynamic>>> _fetchLeaveRequest() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/managereq'),
+        Uri.parse('http://192.168.1.34:3000/api/managereq'),
       );
 
       if (response.statusCode == 200) {
@@ -944,16 +1054,13 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
           final List<Map<String, dynamic>> leaveRequests =
               List<Map<String, dynamic>>.from(parsedResponse);
 
-
-
-
           for (var request in leaveRequests) {
             final employeeId = request['EMPLOYEE_ID'];
             final userId = request['USER_ID'];
 
             if (employeeId != null) {
               final employeeDetailsResponse = await http.get(
-                Uri.parse('http://192.168.1.7:3000/api/emp/$employeeId'),
+                Uri.parse('http://192.168.1.34:3000/api/emp/$employeeId'),
               );
 
               if (employeeDetailsResponse.statusCode == 200) {
@@ -966,6 +1073,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
                   final employeeName =
                       '$firstName ${middleName.isNotEmpty ? middleName + ' ' : ''}$lastName';
                   request['EMPLOYEE_NAME'] = employeeName;
+                  request['EMPLOYEE_EMAIL'] = employeeDetails['EMAIL'];
                   final deptId = employeeDetails['DEPT_ID'];
                   final designationId = employeeDetails['DESIGNATION_ID'];
                   request['DEPARTMENT'] = await _fetchDepartmentName(deptId);
@@ -978,13 +1086,14 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
               }
             } else if (userId != null) {
               final userDetailsResponse = await http.get(
-                Uri.parse('http://192.168.1.7:3000/api/users/$userId'),
+                Uri.parse('http://192.168.1.34:3000/api/users/$userId'),
               );
 
               if (userDetailsResponse.statusCode == 200) {
                 final userDetails = json.decode(userDetailsResponse.body);
                 if (userDetails is Map<String, dynamic>) {
                   request['USER_NAME'] = userDetails['NAME'] ?? '-';
+                  request['USER_EMAIL']=userDetails['EMAIL'];
                   final deptId = userDetails['DEPT_ID'];
                   final designationId = userDetails['DESIGNATION_ID'];
                   request['DEPARTMENT'] = await _fetchDepartmentName(deptId);
@@ -997,10 +1106,9 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
               }
             }
 
-            // Fetch leave type details based on leave_type_id
             final leaveTypeId = request['LEAVE_TYPE_ID'];
             final leaveTypeResponse = await http.get(
-              Uri.parse('http://192.168.1.7:3000/api/leave-type/$leaveTypeId'),
+              Uri.parse('http://192.168.1.34:3000/api/leave-type/$leaveTypeId'),
             );
 
             if (leaveTypeResponse.statusCode == 200) {
@@ -1015,7 +1123,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
             }
           }
 
-          return leaveRequests;
+           return leaveRequests;
         } else {
           print('Failed to retrieve leave requests: Invalid response format');
           return [];
@@ -1029,100 +1137,55 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
       return [];
     }
   }
-
- Future<String> _fetchDepartmentName(int id) async {
-  try {
-    final response = await http.get(
-      Uri.parse('http://192.168.1.7:3000/api/department/$id'),
-    );
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> departmentDetails = json.decode(response.body);
-      // Check if the department is HR, and return null to filter out the request
-      if (departmentDetails['DEPT_SHORT_NAME'] == 'HR') {
-        return '';
-      }
-      return departmentDetails['DEPT_SHORT_NAME'] ?? '-';
-    }
-    print('Failed to fetch department details for department ID: $id');
-    return '-';
-  } catch (e) {
-    print('Error fetching department name: $e');
-    return '-';
-  }
-}
-
-Future<String> _fetchDesignationName(int id) async {
-  try {
-    final response = await http.get(
-      Uri.parse('http://192.168.1.7:3000/api/designation/$id'),
-    );
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> designationDetails = json.decode(response.body);
-      // Check if the designation is HR or Department Head, and return null to filter out the request
-      if (designationDetails['DESIGNATION_NAME'] == 'HR' ||
-          designationDetails['DESIGNATION_NAME'] == 'Dept Head') {
-        return '';
-      }
-      return designationDetails['DESIGNATION_NAME'] ?? '-';
-    }
-    print('Failed to fetch designation details for designation ID: $id');
-    return '-';
-  } catch (e) {
-    print('Error fetching designation name: $e');
-    return '-';
-  }
-}
-
-
-
-
-  Future<String> _fetchEmployeeName(int employeeId) async {
+  Future<String> _fetchDepartmentName(int id) async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/employee/$employeeId'),
+        Uri.parse('http://192.168.1.34:3000/api/department/$id'),
       );
 
       if (response.statusCode == 200) {
-        final parsedResponse = json.decode(response.body);
-        if (parsedResponse is Map<String, dynamic>) {
-          final firstName = parsedResponse['FIRST_NAME'] ?? '';
-          final middleName = parsedResponse['MIDDLE_NAME'] ?? '';
-          final lastName = parsedResponse['LAST_NAME'] ?? '';
-          return '$firstName ${middleName.isNotEmpty ? '$middleName ' : ''}$lastName'.trim();
+        final Map<String, dynamic> departmentDetails = json.decode(response.body);
+        if (departmentDetails['DEPT_SHORT_NAME'] == 'HR') {
+          return '';
         }
+        return departmentDetails['DEPT_SHORT_NAME'] ?? '-';
       }
-      print('Failed to fetch employee details for employee ID: $employeeId');
-      return 'Unknown';
+      print('Failed to fetch department details for department ID: $id');
+      return '-';
     } catch (e) {
-      print('Error fetching employee name: $e');
-      return 'Unknown';
+      print('Error fetching department name: $e');
+      return '-';
     }
   }
 
-  Future<void> _updateApprovalStatus2(int applicationId, bool approved) async {
+  Future<String> _fetchDesignationName(int id) async {
     try {
-      final response = await http.put(
-        Uri.parse('http://192.168.1.7:3000/api/${approved ? 'approve-leave2' : 'reject-leave2'}/$applicationId'),
-        // No need to send body as the applicationId is sent as part of the URL
+      final response = await http.get(
+        Uri.parse('http://192.168.1.34:3000/api/designation/$id'),
       );
 
       if (response.statusCode == 200) {
-        print('Leave request with ID $applicationId ${approved ? 'approved' : 'rejected'} successfully');
-      } else {
-        print('Failed to update approval status: ${response.statusCode}');
+        final Map<String, dynamic> designationDetails = json.decode(response.body);
+        if (designationDetails['DESIGNATION_NAME'] == 'HR' ||
+            designationDetails['DESIGNATION_NAME'] == 'Dept Head') {
+          return '';
+        }
+        return designationDetails['DESIGNATION_NAME'] ?? '-';
       }
+      print('Failed to fetch designation details for designation ID: $id');
+      return '-';
     } catch (e) {
-      print('Error updating approval status: $e');
+      print('Error fetching designation name: $e');
+      return '-';
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Container(
-        padding: EdgeInsets.all(20.0),
+        padding: EdgeInsets.fromLTRB(5.0, 10.0, 20.0, 180.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1139,64 +1202,106 @@ Future<String> _fetchDesignationName(int id) async {
                 } else if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 } else {
-                  final requests = snapshot.data!.where((request) => request['DEPARTMENT'] == 'IT').toList();
+                  final requests = snapshot.data!.where((request) => request['DEPARTMENT'] == 'Finance').toList();
                   return SizedBox(
                     width: double.infinity,
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        columns: [
-                          DataColumn(label: Text('Application Id')),
-                          DataColumn(label: Text('Application Date')),
-                          DataColumn(label: Text('Employee ID')),
-                          DataColumn(label: Text('Employee Name')),
-                          DataColumn(label: Text('User ID')),
-                          DataColumn(label: Text('User Name')),
-                          DataColumn(label: Text('Department')),
-                          DataColumn(label: Text('Designation')),
-                          DataColumn(label: Text('Leave Type')),
-                          DataColumn(label: Text('From Date')),
-                          DataColumn(label: Text('To Date')),
-                          DataColumn(label: Text('Action')),
-                        ],
-                        rows: requests
-        .where((leave_application) =>
-            leave_application['DEPARTMENT'] != '' &&
-            leave_application['DESIGNATION'] != '')
-        .map((leave_application) {
-                          return DataRow(cells: [
-                            DataCell(Text(leave_application['APPLICATION_ID'].toString())),
-                            DataCell(Text(leave_application['DATE_OF_APPLICATION'])),
-                            DataCell(Text(leave_application['EMPLOYEE_ID'] != null ? leave_application['EMPLOYEE_ID'].toString() : ' ')),
-                            DataCell(Text(leave_application['EMPLOYEE_NAME'] != null && leave_application['EMPLOYEE_NAME'] != '' ? leave_application['EMPLOYEE_NAME'] : ' ')), 
-                            DataCell(Text(leave_application['USER_ID'] != null ? leave_application['USER_ID'].toString() : ' ')),
-                            DataCell(Text(leave_application['USER_NAME'] ?? ' ')),
-                             DataCell(Text(leave_application['DEPARTMENT'] ?? ' ')),
-                            DataCell(Text(leave_application['DESIGNATION'] ?? ' ')),
-                            DataCell(Text(leave_application['LEAVE_TYPE_NAME'] ?? ' ')),
-                            DataCell(Text(leave_application['START_DATE'])),
-                            DataCell(Text(leave_application['END_DATE'])),
-                            DataCell(Row(
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () async {
-                                    await _updateApprovalStatus2(
-                                        leave_application['APPLICATION_ID'], true);
-                                  },
-                                  child: Text('Approve'),
-                                ),
-                                SizedBox(width: 10),
-                                ElevatedButton(
-                                  onPressed: () async {
-                                    await _updateApprovalStatus2(
-                                        leave_application['APPLICATION_ID'], false);
-                                  },
-                                  child: Text('Reject'),
-                                ),
-                              ],
-                            )),
-                          ]);
-                        }).toList(),
+                      child: Card(
+                        elevation: 4,
+                        child: DataTable(
+                          headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey[200]!),
+                          dataRowColor: MaterialStateColor.resolveWith((states) => Colors.white),
+                          columns: [
+                            DataColumn(label: _buildDataColumnText('Application Id')),
+                            DataColumn(label: _buildDataColumnText('Application Date')),
+                            DataColumn(label: _buildDataColumnText('Employee ID')),
+                            DataColumn(label: _buildDataColumnText('Employee Name')),
+                            DataColumn(label: _buildDataColumnText('Department')),
+                            DataColumn(label: _buildDataColumnText('Designation')),
+                            DataColumn(label: _buildDataColumnText('Leave Type')),
+                            DataColumn(label: _buildDataColumnText('From Date')),
+                            DataColumn(label: _buildDataColumnText('To Date')),
+                            DataColumn(label: _buildDataColumnText('Action')),
+                            DataColumn(label: _buildDataColumnText('Status')),
+                          ],
+                          rows: requests
+                              .where((leave_application) =>
+                                  leave_application['DEPARTMENT'] != '' &&
+                                  leave_application['DESIGNATION'] != '')
+                              .map((leave_application) {
+                            final applicationId = leave_application['APPLICATION_ID'];
+                            return DataRow(cells: [
+                              DataCell(Text(applicationId.toString())),
+                              DataCell(Text(leave_application['DATE_OF_APPLICATION'])),
+                              DataCell(Text(leave_application['EMPLOYEE_ID'] != null
+                                  ? leave_application['EMPLOYEE_ID'].toString()
+                                  : ' ')),
+                              DataCell(Text(leave_application['EMPLOYEE_NAME'] != null &&
+                                      leave_application['EMPLOYEE_NAME'] != ''
+                                  ? leave_application['EMPLOYEE_NAME']
+                                  : ' ')),
+                              DataCell(Text(leave_application['DEPARTMENT'] ?? ' ')),
+                              DataCell(Text(leave_application['DESIGNATION'] ?? ' ')),
+                              DataCell(Text(leave_application['LEAVE_TYPE_NAME'] ?? ' ')),
+                              DataCell(Text(leave_application['START_DATE'])),
+                              DataCell(Text(leave_application['END_DATE'])),
+                          DataCell(Row(
+  children: [
+    ElevatedButton(
+      onPressed: () async {
+                                      await _updateApprovalStatus(
+                                          applicationId, true,
+                                          leaveApplicationDetails:
+                                              leave_application);
+                                      setState(() {
+                                        _approvalStatusMap[applicationId] =
+                                            true;
+                                      });
+                                    },
+      child: Text('Approve'),
+    ),
+    SizedBox(width: 10),
+    ElevatedButton(
+      onPressed: () {
+          _showRejectDialog(applicationId, leaveApplicationDetails:
+                                              leave_application);
+       
+      },
+      child: Text('Reject'),
+    ),
+  ],
+)),
+
+                      DataCell(
+  FutureBuilder<bool?>(
+    future: _fetchApprovalStatus(applicationId),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return CircularProgressIndicator();
+      } else if (snapshot.hasError) {
+        return Text('Error: ${snapshot.error}');
+      } else {
+        final bool? approvalStatus = snapshot.data;
+        if (approvalStatus == null) {
+          return Text('Pending'); // Display "Pending" when status is not available
+        } else {
+          return Text(
+            approvalStatus ? 'Approved' : 'Rejected',
+            style: TextStyle(
+              color: approvalStatus ? Colors.green : Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          );
+        }
+      }
+    },
+  ),
+),
+
+                            ]);
+                          }).toList(),
+                        ),
                       ),
                     ),
                   );
@@ -1208,6 +1313,158 @@ Future<String> _fetchDesignationName(int id) async {
       ),
     );
   }
+
+  Widget _buildDataColumnText(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.black,
+      ),
+    );
+  }
+
+  void _showRejectDialog(int applicationId,
+      {Map<String, dynamic>? leaveApplicationDetails}) {
+  String rejectReason = '';
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('Reject Leave Request'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: InputDecoration(labelText: 'Reason for Rejection'),
+              onChanged: (value) {
+                rejectReason = value;
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close the dialog
+            },
+            child: Text('Cancel'),
+          ),
+          TextButton(
+           onPressed: () async {
+                await _updateApprovalStatus(applicationId, false,
+                    reason: rejectReason,
+                    leaveApplicationDetails: leaveApplicationDetails);
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            child: Text('Reject'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
+  Future<void> _updateApprovalStatus(int applicationId, bool approved, {String? reason, Map<String, dynamic>? leaveApplicationDetails}) async {
+
+  try {
+    final Map<String, dynamic> requestBody = {
+      'approved': approved,
+    };
+    if (!approved && reason != null) {
+      requestBody['reason'] = reason;
+    }
+
+    final response = await http.put(
+      Uri.parse('http://192.168.1.34:3000/api/${approved ? 'approve-leave2' : 'reject-leave2'}/$applicationId'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(requestBody),
+    );
+
+    if (response.statusCode == 200) {
+      print('Leave request with ID $applicationId ${approved ? 'Approved' : 'Rejected'} successfully');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('approvalStatus_$applicationId', approved); // Ensure that this is awaited
+      if (!approved && reason != null) {
+        setState(() {
+          _rejectionReasonsMap[applicationId] = reason;
+        });
+      }
+    // Send email notification
+        final subject = approved ? 'Leave Approved' : 'Leave Rejected';
+        final reasonText = approved ? '' : '\n\nReason for Rejection: $reason';
+        final body = approved
+            ? 'Your leave request has been approved by Department Head.'
+            : 'Your leave request has been rejected by Department Head.$reasonText';
+        final fromEmail = 'greeshmatheressa123@gmail.com'; // Change to your sender email
+        final employeeEmail = leaveApplicationDetails != null
+            ? leaveApplicationDetails['EMPLOYEE_EMAIL']
+            : ''; // Use the employee's email from leaveApplicationDetails
+        final ccRecipients = 'manager@gmail.com'; // Add CC recipients if needed
+        final bccRecipients = ''; // Add BCC recipients if needed
+
+        final emailResponse = await http.post(
+          Uri.parse('http://192.168.1.34:3000/send-email'),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: jsonEncode({
+            'fromEmail': fromEmail,
+            'employeeEmail': employeeEmail,
+            'ccRecipients': ccRecipients,
+            'bccRecipients': bccRecipients,
+            'subject': subject,
+            'body': body,
+          }),
+        );
+
+        if (emailResponse.statusCode == 200) {
+          print('Email sent successfully.');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Email sent successfully.'),
+              duration: Duration(seconds: 2), // Adjust the duration as needed
+            ),
+          );
+        } else {
+          print('Failed to send email: ${emailResponse.body}');
+        }
+      } else {
+        print('Failed to update approval status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error updating approval status: $e');
+    }
+  }
+Future<bool?> _fetchApprovalStatus(int applicationId) async {
+  try {
+    final response = await http.get(
+      Uri.parse('http://192.168.1.34:3000/api/fetch-approval-status/$applicationId'),
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      final String? status = data['status'];
+      if (status == 'Approved') {
+        return true;
+      } else if (status == 'Rejected') {
+        return false;
+      } else {
+        return null; // Status is neither Approved nor Rejected, so return null
+      }
+    } else {
+      print('Failed to fetch approval status: ${response.statusCode}');
+      return null; // Return null instead of false when status is not fetched
+    }
+  } catch (e) {
+    print('Error fetching approval status: $e');
+    return null; // Return null instead of false in case of error
+  }
+}
 }
 
 class ManageLeaveStatus extends StatefulWidget {
@@ -1231,7 +1488,7 @@ class _ManageLeaveStatusState extends State<ManageLeaveStatus> {
    Future<void> _fetchLeaveTypes() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/manageleave'),
+        Uri.parse('http://192.168.1.34:3000/api/manageleave'),
       );
 
       if (response.statusCode == 200) {
@@ -1259,7 +1516,7 @@ class _ManageLeaveStatusState extends State<ManageLeaveStatus> {
     try {
       print('ManageLeaveStatus - Employee ID: $employeeId');
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/leavestatususer/$employeeId'),
+        Uri.parse('http://192.168.1.34:3000/api/leavestatususer/$employeeId'),
       );
 
       if (response.statusCode == 200) {
@@ -1282,59 +1539,73 @@ class _ManageLeaveStatusState extends State<ManageLeaveStatus> {
 
 
 
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Container(
-        padding: EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'View Leave Status',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 20),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: _fetchStatus(widget.employeeId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else {
-                  final leaves = snapshot.data!;
-                  return DataTable(
-                    columns: [
-                       DataColumn(label: Text('Application Date')),
-        DataColumn(label: Text('Start Date')),
-        DataColumn(label: Text('End Date')),
-        DataColumn(label: Text('Leave Type')),
-        DataColumn(label: Text('Status')),
-                    ],
-                    rows: leaves.map((status) {
-                      // Format the date to display only the date part
-                      //DateTime creationDate = DateTime.parse(status['CREATION_DATE']);
-                     // String formattedDate = DateFormat('yyyy-MM-dd').format(creationDate);
- final leaveTypeId = status['LEAVE_TYPE_ID'].toString();
-                      final leaveName = _leaveTypeMap[leaveTypeId] ?? 'Unknown';
-                      return DataRow(cells: [
-                       DataCell(Text(status['DATE_OF_APPLICATION'])),
-          DataCell(Text(status['START_DATE'])),
-          DataCell(Text(status['END_DATE'])),
-          DataCell(Text(leaveName)),
-          DataCell(Text(status['APPROVED_BYHR'] ?? '')),
-                        //DataCell(Text(formattedDate)), // Display the formatted date
-                   
-                      ]);
-                    }).toList(),
-                  );
-                }
-              },
-            ),
-          ],
-        ),
+   @override
+Widget build(BuildContext context) {
+  return SingleChildScrollView(
+    child: Container(
+      padding: EdgeInsets.fromLTRB(5.0, 10.0, 20.0, 180.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'View Leave Status',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 20),
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: _fetchStatus(widget.employeeId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              } else {
+                final leaves = snapshot.data!;
+                return Card(
+                  elevation: 4,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columnSpacing: 32,
+                      columns: [
+                        DataColumn(label: _buildDataColumnText('Application Date')),
+                        DataColumn(label: _buildDataColumnText('Start Date')),
+                        DataColumn(label: _buildDataColumnText('End Date')),
+                        DataColumn(label: _buildDataColumnText('Leave Type')),
+                        DataColumn(label: _buildDataColumnText('Manager')),
+                        DataColumn(label: _buildDataColumnText('HR')),
+                      ],
+                      rows: leaves.map((status) {
+                        final leaveTypeId = status['LEAVE_TYPE_ID'].toString();
+                        final leaveName = _leaveTypeMap[leaveTypeId] ?? 'Unknown';
+                        return DataRow(cells: [
+                          DataCell(Text(status['DATE_OF_APPLICATION'])),
+                          DataCell(Text(status['START_DATE'])),
+                          DataCell(Text(status['END_DATE'])),
+                          DataCell(Text(leaveName)),
+                          DataCell(Text(status['APPROVED_BY3'] == 'Rejected' ? 'Rejected' : '')), // Manager column
+                          DataCell(Text(status['APPROVED_BYHR'] == 'Rejected' ? '' : status['APPROVED_BYHR'] ?? '')), // HR column
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+Widget _buildDataColumnText(String text) {
+  return Text(
+    text,
+    style: TextStyle(
+      fontWeight: FontWeight.bold,
+      color: Colors.black,
+    ),
+  );
+}
 }
