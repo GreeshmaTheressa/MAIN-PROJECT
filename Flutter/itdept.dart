@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:intl/intl.dart';
+import 'package:lmpp/pages/login.dart';
 
 void main() {
   runApp(MyApp());
@@ -169,7 +169,7 @@ class _itscreenState extends State<itscreen> {
                         });
                       },
                     ),
-                    ListTile(
+                   /* ListTile(
   leading: Icon(Icons.event_note, color: Colors.white),
   tileColor: Colors.blueGrey,
   title: Text(
@@ -201,7 +201,17 @@ class _itscreenState extends State<itscreen> {
                         });
   
                       },
-                    ),
+                    ),*/
+                     ListTile(
+                        leading: Icon(Icons.logout, color: Colors.white),
+                        title: Text(
+                          'Logout',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        onTap: () {
+                          _logout(context);
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -234,7 +244,14 @@ class _itscreenState extends State<itscreen> {
       ),
     );
   }
-
+void _logout(BuildContext context) {
+  // Implement your logout logic here
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (context) => RetrieveEmployeeScreen()), // Replace MainScreen with the actual name of your main screen widget
+    (route) => false, // This will remove all previous routes
+  );
+}
   void _showApplyLeaveForm(BuildContext context, String employeeId) async {
     DateTime? startDate;
     DateTime? endDate;
@@ -369,7 +386,7 @@ class _itscreenState extends State<itscreen> {
     final String formattedEndDate = endDate != null ? dateFormat.format(endDate!) : ''; // Format the end date
     final String formattedApplicationDate = dateFormat.format(applicationDate);
 
-    final String serverUrl = 'http://192.168.1.7:3000/api/leaveapp';
+    final String serverUrl = 'http://192.168.1.34:3000/api/leaveapp';
     try {
       final leaveTypeId = await _fetchLeaveTypeId(_selectedLeaveType);
       if (leaveTypeId == null) {
@@ -424,7 +441,7 @@ class _itscreenState extends State<itscreen> {
   Future<void> _fetchLeaveTypes() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/manageleave'),
+        Uri.parse('http://192.168.1.34:3000/api/manageleave'),
       );
 
       if (response.statusCode == 200) {
@@ -451,7 +468,7 @@ class _itscreenState extends State<itscreen> {
 Future<String?> _fetchLeaveTypeId(String leaveName) async {
   try {
     final response = await http.get(
-      Uri.parse('http://192.168.1.7:3000/api/manageleave?name=$leaveName'),
+      Uri.parse('http://192.168.1.34:3000/api/manageleave?name=$leaveName'),
     );
 
     if (response.statusCode == 200) {
@@ -486,7 +503,7 @@ class MainContent extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: Container(
-        padding: EdgeInsets.fromLTRB(5.0, 10.0, 20.0, 180.0),
+        padding: EdgeInsets.fromLTRB(5.0, 10.0, 20.0, 300.0),
         child: Column(
           children: [
             Text(
@@ -499,7 +516,7 @@ class MainContent extends StatelessWidget {
                 crossAxisCount: 3,
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
-                childAspectRatio: 2.0 / 1.0, // Adjust this ratio for rectangle
+                childAspectRatio: 2.1 / 0.6, // Adjust this ratio for rectangle
               ),
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
@@ -593,7 +610,7 @@ class DashboardCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, size: 50, color: iconColor),
+            Icon(icon, size: 30, color: iconColor),
             SizedBox(width: 10), // Add some space between icon and title
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -601,12 +618,12 @@ class DashboardCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontSize: 20),
+                  style: TextStyle(fontSize: 19),
                 ),
                 SizedBox(height: 2),
                 Text(
                   value.toString(),  // Convert int to String here
-                  style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -626,7 +643,7 @@ class _ManageDepartmentPageState extends State<ManageDepartmentPage> {
   Future<List<Map<String, dynamic>>> _fetchDepartments() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/managedept'),
+        Uri.parse('http://192.168.1.34:3000/api/managedept'),
       );
 
       if (response.statusCode == 200) {
@@ -689,30 +706,19 @@ class _ManageDepartmentPageState extends State<ManageDepartmentPage> {
                         columns: [
                           DataColumn(label: _buildDataColumnText('Department Name')),
                           DataColumn(label: _buildDataColumnText('Department Short Name')),
-                          DataColumn(label: _buildDataColumnText('Creation Date')),
-                          DataColumn(label: _buildDataColumnText('Action')), // Added action column
+                        //  DataColumn(label: _buildDataColumnText('Creation Date')),
+                         // DataColumn(label: _buildDataColumnText('Action')), // Added action column
                         ],
                         rows: departments.map((department) {
                           // Format the date to display only the date part
-                          DateTime creationDate = DateTime.parse(department['CREATION_DATE']);
-                          String formattedDate = DateFormat('yyyy-MM-dd').format(creationDate);
+                         // DateTime creationDate = DateTime.parse(department['CREATION_DATE']);
+                          //String formattedDate = DateFormat('yyyy-MM-dd').format(creationDate);
 
                           return DataRow(cells: [
                             DataCell(Text(department['DEPT_NAME'], style: TextStyle(fontWeight: FontWeight.bold))),
                             DataCell(Text(department['DEPT_SHORT_NAME'], style: TextStyle(fontWeight: FontWeight.bold))),
-                            DataCell(Text(formattedDate, style: TextStyle(fontStyle: FontStyle.italic))),
-                            DataCell(Row(
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.edit, color: Colors.blue),
-                                  onPressed: () => _editDepartment(departments.indexOf(department)),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => _deleteDepartment(departments.indexOf(department)),
-                                ),
-                              ],
-                            )),
+                          //  DataCell(Text(formattedDate, style: TextStyle(fontStyle: FontStyle.italic))),
+                           
                           ]);
                         }).toList(),
                       );
@@ -746,7 +752,7 @@ class _ManageDesignationPageState extends State<ManageDesignationPage> {
   Future<List<Map<String, dynamic>>> _fetchDesignations() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/managedes'),
+        Uri.parse('http://192.168.1.34:3000/api/managedes'),
       );
 
       if (response.statusCode == 200) {
@@ -810,7 +816,7 @@ class _ManageDesignationPageState extends State<ManageDesignationPage> {
                           DataColumn(label: _buildDataColumnText('Designation Name')),
                           DataColumn(label: _buildDataColumnText('Designation Description')),
                          // DataColumn(label: _buildDataColumnText('Creation Date')),
-                          DataColumn(label: _buildDataColumnText('Action')), // Added action column
+                         // DataColumn(label: _buildDataColumnText('Action')), // Added action column
                         ],
                         rows: designations.map((designation) {
                           // Format the date to display only the date part
@@ -821,18 +827,7 @@ class _ManageDesignationPageState extends State<ManageDesignationPage> {
                             DataCell(Text(designation['DESIGNATION_NAME'], style: TextStyle(fontWeight: FontWeight.bold))),
                             DataCell(Text(designation['DESIGNATION_DESC'], style: TextStyle(fontWeight: FontWeight.bold))),
                            // DataCell(Text(formattedDate, style: TextStyle(fontStyle: FontStyle.italic))),
-                            DataCell(Row(
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.edit, color: Colors.blue),
-                                  onPressed: () => _editDesignation(designations.indexOf(designation)),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => _deleteDesignation(designations.indexOf(designation)),
-                                ),
-                              ],
-                            )),
+                     
                           ]);
                         }).toList(),
                       );
@@ -866,7 +861,7 @@ class _ManageEmployeePageState extends State<ManageEmployeePage> {
  Future<List<Map<String, dynamic>>> _fetchEmployees() async {
   try {
     final response = await http.get(
-      Uri.parse('http://192.168.1.7:3000/api/manageemp'),
+      Uri.parse('http://192.168.1.34:3000/api/manageemp'),
     );
 
     if (response.statusCode == 200) {
@@ -899,7 +894,7 @@ class _ManageEmployeePageState extends State<ManageEmployeePage> {
 Future<String> getDepartmentName(int departmentId) async {
   try {
     final response = await http.get(
-      Uri.parse('http://192.168.1.7:3000/api/department/$departmentId'),
+      Uri.parse('http://192.168.1.34:3000/api/department/$departmentId'),
     );
 
     if (response.statusCode == 200) {
@@ -917,7 +912,7 @@ Future<String> getDepartmentName(int departmentId) async {
 Future<String> getDesignationName(int designationId) async {
   try {
     final response = await http.get(
-      Uri.parse('http://192.168.1.7:3000/api/designation/$designationId'),
+      Uri.parse('http://192.168.1.34:3000/api/designation/$designationId'),
     );
 
     if (response.statusCode == 200) {
@@ -987,13 +982,13 @@ Future<String> getDesignationName(int designationId) async {
                             DataColumn(label: _buildDataColumnText('Password')),
                             DataColumn(label: _buildDataColumnText('Department')),
                             DataColumn(label: _buildDataColumnText('Designation')),
-                            DataColumn(label: _buildDataColumnText('Action')), // Added action column
+                          //  DataColumn(label: _buildDataColumnText('Action')), // Added action column
                           ],
                           rows: employees.map((employee) {
                             return DataRow(cells: [
                               DataCell(Text(employee['EMPLOYEE_ID'].toString(), style: TextStyle(fontWeight: FontWeight.bold))),
                               DataCell(Text(employee['FIRST_NAME'].toString(), style: TextStyle(fontWeight: FontWeight.bold))),
-                              DataCell(Text(employee['MIDDLE_NAME'].toString(), style: TextStyle(fontWeight: FontWeight.bold))),
+    DataCell(Text(employee['MIDDLE_NAME'] != null ? employee['MIDDLE_NAME'].toString() : '', style: TextStyle(fontWeight: FontWeight.bold))),
                               DataCell(Text(employee['LAST_NAME'].toString(), style: TextStyle(fontWeight: FontWeight.bold))),
                               DataCell(Text(employee['AGE'].toString())),
                               DataCell(Text(employee['GENDER'].toString())),
@@ -1003,18 +998,7 @@ Future<String> getDesignationName(int designationId) async {
                               DataCell(Text(employee['PASSWORD'].toString())),
                               DataCell(Text(employee['DEPT_SHORT_NAME'].toString())),
                               DataCell(Text(employee['DESIGNATION_NAME'].toString())),
-                              DataCell(Row(
-                                children: [
-                                  IconButton(
-                                    icon: Icon(Icons.edit, color: Colors.blue),
-                                    onPressed: () => _editEmployee(employees.indexOf(employee)),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _deleteEmployee(employees.indexOf(employee)),
-                                  ),
-                                ],
-                              )),
+                             
                             ]);
                           }).toList(),
                         );
@@ -1040,7 +1024,6 @@ Future<String> getDesignationName(int designationId) async {
     );
   }}
 
-
 class LeaveRequestPage extends StatefulWidget {
   @override
   _LeaveRequestPageState createState() => _LeaveRequestPageState();
@@ -1048,30 +1031,21 @@ class LeaveRequestPage extends StatefulWidget {
 
 class _LeaveRequestPageState extends State<LeaveRequestPage> {
   Map<int, bool?> _approvalStatusMap = {};
-  Set<int> _disabledButtons = {};
+  Map<int, String> _rejectionReasonsMap = {};
+  
+
+
+
 
   @override
   void initState() {
     super.initState();
-    _loadDisabledButtons();
-  }
-
-  void _loadDisabledButtons() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _disabledButtons = prefs.getStringList('disabledButtons')?.map(int.parse).toSet() ?? {};
-    });
-  }
-
-  void _saveDisabledButtons() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setStringList('disabledButtons', _disabledButtons.map((id) => id.toString()).toList());
   }
 
   Future<List<Map<String, dynamic>>> _fetchLeaveRequest() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/managereq'),
+        Uri.parse('http://192.168.1.34:3000/api/managereq'),
       );
 
       if (response.statusCode == 200) {
@@ -1080,14 +1054,13 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
           final List<Map<String, dynamic>> leaveRequests =
               List<Map<String, dynamic>>.from(parsedResponse);
 
-
           for (var request in leaveRequests) {
             final employeeId = request['EMPLOYEE_ID'];
             final userId = request['USER_ID'];
 
             if (employeeId != null) {
               final employeeDetailsResponse = await http.get(
-                Uri.parse('http://192.168.1.7:3000/api/emp/$employeeId'),
+                Uri.parse('http://192.168.1.34:3000/api/emp/$employeeId'),
               );
 
               if (employeeDetailsResponse.statusCode == 200) {
@@ -1100,6 +1073,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
                   final employeeName =
                       '$firstName ${middleName.isNotEmpty ? middleName + ' ' : ''}$lastName';
                   request['EMPLOYEE_NAME'] = employeeName;
+                  request['EMPLOYEE_EMAIL'] = employeeDetails['EMAIL'];
                   final deptId = employeeDetails['DEPT_ID'];
                   final designationId = employeeDetails['DESIGNATION_ID'];
                   request['DEPARTMENT'] = await _fetchDepartmentName(deptId);
@@ -1112,13 +1086,14 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
               }
             } else if (userId != null) {
               final userDetailsResponse = await http.get(
-                Uri.parse('http://192.168.1.7:3000/api/users/$userId'),
+                Uri.parse('http://192.168.1.34:3000/api/users/$userId'),
               );
 
               if (userDetailsResponse.statusCode == 200) {
                 final userDetails = json.decode(userDetailsResponse.body);
                 if (userDetails is Map<String, dynamic>) {
                   request['USER_NAME'] = userDetails['NAME'] ?? '-';
+                  request['USER_EMAIL']=userDetails['EMAIL'];
                   final deptId = userDetails['DEPT_ID'];
                   final designationId = userDetails['DESIGNATION_ID'];
                   request['DEPARTMENT'] = await _fetchDepartmentName(deptId);
@@ -1133,7 +1108,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
 
             final leaveTypeId = request['LEAVE_TYPE_ID'];
             final leaveTypeResponse = await http.get(
-              Uri.parse('http://192.168.1.7:3000/api/leave-type/$leaveTypeId'),
+              Uri.parse('http://192.168.1.34:3000/api/leave-type/$leaveTypeId'),
             );
 
             if (leaveTypeResponse.statusCode == 200) {
@@ -1148,7 +1123,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
             }
           }
 
-          return leaveRequests;
+           return leaveRequests;
         } else {
           print('Failed to retrieve leave requests: Invalid response format');
           return [];
@@ -1162,11 +1137,10 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
       return [];
     }
   }
-
   Future<String> _fetchDepartmentName(int id) async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/department/$id'),
+        Uri.parse('http://192.168.1.34:3000/api/department/$id'),
       );
 
       if (response.statusCode == 200) {
@@ -1187,7 +1161,7 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
   Future<String> _fetchDesignationName(int id) async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/designation/$id'),
+        Uri.parse('http://192.168.1.34:3000/api/designation/$id'),
       );
 
       if (response.statusCode == 200) {
@@ -1205,17 +1179,9 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
       return '-';
     }
   }
-Future<bool?> _fetchApprovalStatus(int applicationId) async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('approvalStatus_$applicationId');
-  } catch (e) {
-    print('Error fetching approval status: $e');
-    return null;
-  }
-}
 
-   @override
+
+  @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Container(
@@ -1244,87 +1210,98 @@ Future<bool?> _fetchApprovalStatus(int applicationId) async {
                       child: Card(
                         elevation: 4,
                         child: DataTable(
-  headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey[200]!),
-  dataRowColor: MaterialStateColor.resolveWith((states) => Colors.white),
-  columns: [
-    DataColumn(label: _buildDataColumnText('Application Id')),
-    DataColumn(label: _buildDataColumnText('Application Date')),
-    DataColumn(label: _buildDataColumnText('Employee ID')),
-    DataColumn(label: _buildDataColumnText('Employee Name')),
-    DataColumn(label: _buildDataColumnText('Department')),
-    DataColumn(label: _buildDataColumnText('Designation')),
-    DataColumn(label: _buildDataColumnText('Leave Type')),
-    DataColumn(label: _buildDataColumnText('From Date')),
-    DataColumn(label: _buildDataColumnText('To Date')),
-    DataColumn(label: _buildDataColumnText('Action')),
-    DataColumn(label: _buildDataColumnText('Status')),
+                          headingRowColor: MaterialStateColor.resolveWith((states) => Colors.grey[200]!),
+                          dataRowColor: MaterialStateColor.resolveWith((states) => Colors.white),
+                          columns: [
+                            DataColumn(label: _buildDataColumnText('Application Id')),
+                            DataColumn(label: _buildDataColumnText('Application Date')),
+                            DataColumn(label: _buildDataColumnText('Employee ID')),
+                            DataColumn(label: _buildDataColumnText('Employee Name')),
+                            DataColumn(label: _buildDataColumnText('Department')),
+                            DataColumn(label: _buildDataColumnText('Designation')),
+                            DataColumn(label: _buildDataColumnText('Leave Type')),
+                            DataColumn(label: _buildDataColumnText('From Date')),
+                            DataColumn(label: _buildDataColumnText('To Date')),
+                            DataColumn(label: _buildDataColumnText('Action')),
+                            DataColumn(label: _buildDataColumnText('Status')),
+                          ],
+                          rows: requests
+                              .where((leave_application) =>
+                                  leave_application['DEPARTMENT'] != '' &&
+                                  leave_application['DESIGNATION'] != '')
+                              .map((leave_application) {
+                            final applicationId = leave_application['APPLICATION_ID'];
+                            return DataRow(cells: [
+                              DataCell(Text(applicationId.toString())),
+                              DataCell(Text(leave_application['DATE_OF_APPLICATION'])),
+                              DataCell(Text(leave_application['EMPLOYEE_ID'] != null
+                                  ? leave_application['EMPLOYEE_ID'].toString()
+                                  : ' ')),
+                              DataCell(Text(leave_application['EMPLOYEE_NAME'] != null &&
+                                      leave_application['EMPLOYEE_NAME'] != ''
+                                  ? leave_application['EMPLOYEE_NAME']
+                                  : ' ')),
+                              DataCell(Text(leave_application['DEPARTMENT'] ?? ' ')),
+                              DataCell(Text(leave_application['DESIGNATION'] ?? ' ')),
+                              DataCell(Text(leave_application['LEAVE_TYPE_NAME'] ?? ' ')),
+                              DataCell(Text(leave_application['START_DATE'])),
+                              DataCell(Text(leave_application['END_DATE'])),
+                          DataCell(Row(
+  children: [
+    ElevatedButton(
+      onPressed: () async {
+                                      await _updateApprovalStatus(
+                                          applicationId, true,
+                                          leaveApplicationDetails:
+                                              leave_application);
+                                      setState(() {
+                                        _approvalStatusMap[applicationId] =
+                                            true;
+                                      });
+                                    },
+      child: Text('Approve'),
+    ),
+    SizedBox(width: 10),
+    ElevatedButton(
+      onPressed: () {
+          _showRejectDialog(applicationId, leaveApplicationDetails:
+                                              leave_application);
+       
+      },
+      child: Text('Reject'),
+    ),
   ],
-  rows: requests
-      .where((leave_application) =>
-          leave_application['DEPARTMENT'] != '' &&
-          leave_application['DESIGNATION'] != '')
-      .map((leave_application) {
-    final applicationId = leave_application['APPLICATION_ID'];
-    final bool isDisabled = _disabledButtons.contains(applicationId);
+)),
 
-    return DataRow(cells: [
-      DataCell(Text(applicationId.toString())),
-      DataCell(Text(leave_application['DATE_OF_APPLICATION'])),
-      DataCell(Text(leave_application['EMPLOYEE_ID'] != null
-          ? leave_application['EMPLOYEE_ID'].toString()
-          : ' ')),
-      DataCell(Text(leave_application['EMPLOYEE_NAME'] != null &&
-          leave_application['EMPLOYEE_NAME'] != ''
-          ? leave_application['EMPLOYEE_NAME']
-          : ' ')),
-      DataCell(Text(leave_application['DEPARTMENT'] ?? ' ')),
-      DataCell(Text(leave_application['DESIGNATION'] ?? ' ')),
-      DataCell(Text(leave_application['LEAVE_TYPE_NAME'] ?? ' ')),
-      DataCell(Text(leave_application['START_DATE'])),
-      DataCell(Text(leave_application['END_DATE'])),
-      DataCell(Row(
-        children: [
-          ElevatedButton(
-            onPressed: isDisabled ? null : () async {
-              await _updateApprovalStatus(applicationId, true);
-              setState(() {
-                _approvalStatusMap[applicationId] = true;
-                _disabledButtons.add(applicationId); // Add ID to disabled set
-                _saveDisabledButtons(); // Save disabled buttons IDs
-              });
-            },
-            child: Text('Approve'),
-          ),
-          SizedBox(width: 10),
-          ElevatedButton(
-  onPressed: isDisabled ? null : () {
-    _showRejectDialog(applicationId);
-  },
-  child: Text('Reject'),
+                      DataCell(
+  FutureBuilder<bool?>(
+    future: _fetchApprovalStatus(applicationId),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return CircularProgressIndicator();
+      } else if (snapshot.hasError) {
+        return Text('Error: ${snapshot.error}');
+      } else {
+        final bool? approvalStatus = snapshot.data;
+        if (approvalStatus == null) {
+          return Text('Pending'); // Display "Pending" when status is not available
+        } else {
+          return Text(
+            approvalStatus ? 'Approved' : 'Rejected',
+            style: TextStyle(
+              color: approvalStatus ? Colors.green : Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          );
+        }
+      }
+    },
+  ),
 ),
 
-        ],
-      )),
-      DataCell(FutureBuilder<bool?>(
-        future: _fetchApprovalStatus(applicationId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return CircularProgressIndicator();
-          } else if (snapshot.hasError) {
-            return Text('Error: ${snapshot.error}');
-          } else {
-            final bool? approvalStatus = snapshot.data;
-            if (approvalStatus == null) {
-              return SizedBox(); // If status is not set, display nothing initially
-            } else {
-              return Text(approvalStatus ? 'Approved' : 'Rejected');
-            }
-          }
-        },
-      )),
-    ]);
-  }).toList(),
-)
+                            ]);
+                          }).toList(),
+                        ),
                       ),
                     ),
                   );
@@ -1347,7 +1324,8 @@ Future<bool?> _fetchApprovalStatus(int applicationId) async {
     );
   }
 
- void _showRejectDialog(int applicationId) {
+  void _showRejectDialog(int applicationId,
+      {Map<String, dynamic>? leaveApplicationDetails}) {
   String rejectReason = '';
 
   showDialog(
@@ -1374,14 +1352,12 @@ Future<bool?> _fetchApprovalStatus(int applicationId) async {
             child: Text('Cancel'),
           ),
           TextButton(
-            onPressed: () async {
-              await _updateApprovalStatus(applicationId, false, reason: rejectReason);
-              Navigator.of(context).pop(); // Close the dialog
-              setState(() {
-                _disabledButtons.add(applicationId); // Add ID to disabled set
-                _saveDisabledButtons(); // Save disabled buttons IDs
-              });
-            },
+           onPressed: () async {
+                await _updateApprovalStatus(applicationId, false,
+                    reason: rejectReason,
+                    leaveApplicationDetails: leaveApplicationDetails);
+                Navigator.of(context).pop(); // Close the dialog
+              },
             child: Text('Reject'),
           ),
         ],
@@ -1391,28 +1367,72 @@ Future<bool?> _fetchApprovalStatus(int applicationId) async {
 }
 
 
-  Future<void> _updateApprovalStatus(int applicationId, bool approved, {String? reason}) async {
-    try {
-      final Map<String, dynamic> requestBody = {
-        'approved': approved,
-      };
+  Future<void> _updateApprovalStatus(int applicationId, bool approved, {String? reason, Map<String, dynamic>? leaveApplicationDetails}) async {
+
+  try {
+    final Map<String, dynamic> requestBody = {
+      'approved': approved,
+    };
+    if (!approved && reason != null) {
+      requestBody['reason'] = reason;
+    }
+
+    final response = await http.put(
+      Uri.parse('http://192.168.1.34:3000/api/${approved ? 'approve-leave2' : 'reject-leave2'}/$applicationId'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(requestBody),
+    );
+
+    if (response.statusCode == 200) {
+      print('Leave request with ID $applicationId ${approved ? 'Approved' : 'Rejected'} successfully');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('approvalStatus_$applicationId', approved); // Ensure that this is awaited
       if (!approved && reason != null) {
-        requestBody['reason'] = reason; // Include the reason in the request body if rejecting and reason is provided
+        setState(() {
+          _rejectionReasonsMap[applicationId] = reason;
+        });
       }
+    // Send email notification
+        final subject = approved ? 'Leave Approved' : 'Leave Rejected';
+        final reasonText = approved ? '' : '\n\nReason for Rejection: $reason';
+        final body = approved
+            ? 'Your leave request has been approved by Department Head.'
+            : 'Your leave request has been rejected by Department Head.$reasonText';
+        final fromEmail = 'greeshmatheressa123@gmail.com'; // Change to your sender email
+        final employeeEmail = leaveApplicationDetails != null
+            ? leaveApplicationDetails['EMPLOYEE_EMAIL']
+            : ''; // Use the employee's email from leaveApplicationDetails
+        final ccRecipients = 'manager@gmail.com'; // Add CC recipients if needed
+        final bccRecipients = ''; // Add BCC recipients if needed
 
-      final response = await http.put(
-        Uri.parse('http://192.168.1.7:3000/api/${approved ? 'approve-leave2' : 'reject-leave2'}/$applicationId'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(requestBody),
-      );
+        final emailResponse = await http.post(
+          Uri.parse('http://192.168.1.34:3000/send-email'),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: jsonEncode({
+            'fromEmail': fromEmail,
+            'employeeEmail': employeeEmail,
+            'ccRecipients': ccRecipients,
+            'bccRecipients': bccRecipients,
+            'subject': subject,
+            'body': body,
+          }),
+        );
 
-      if (response.statusCode == 200) {
-        print('Leave request with ID $applicationId ${approved ? 'approved' : 'rejected'} successfully');
-        // Save the approval status to shared preferences
-        final prefs = await SharedPreferences.getInstance();
-        prefs.setBool('approvalStatus_$applicationId', approved);
+        if (emailResponse.statusCode == 200) {
+          print('Email sent successfully.');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Email sent successfully.'),
+              duration: Duration(seconds: 2), // Adjust the duration as needed
+            ),
+          );
+        } else {
+          print('Failed to send email: ${emailResponse.body}');
+        }
       } else {
         print('Failed to update approval status: ${response.statusCode}');
       }
@@ -1420,8 +1440,32 @@ Future<bool?> _fetchApprovalStatus(int applicationId) async {
       print('Error updating approval status: $e');
     }
   }
+Future<bool?> _fetchApprovalStatus(int applicationId) async {
+  try {
+    final response = await http.get(
+      Uri.parse('http://192.168.1.34:3000/api/fetch-approval-status/$applicationId'),
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      final String? status = data['status'];
+      if (status == 'Approved') {
+        return true;
+      } else if (status == 'Rejected') {
+        return false;
+      } else {
+        return null; // Status is neither Approved nor Rejected, so return null
+      }
+    } else {
+      print('Failed to fetch approval status: ${response.statusCode}');
+      return null; // Return null instead of false when status is not fetched
+    }
+  } catch (e) {
+    print('Error fetching approval status: $e');
+    return null; // Return null instead of false in case of error
+  }
 }
-  
+}
 
 class ManageLeaveStatus extends StatefulWidget {
   final String? employeeId; // Add employeeId parameter here
@@ -1444,7 +1488,7 @@ class _ManageLeaveStatusState extends State<ManageLeaveStatus> {
    Future<void> _fetchLeaveTypes() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/manageleave'),
+        Uri.parse('http://192.168.1.34:3000/api/manageleave'),
       );
 
       if (response.statusCode == 200) {
@@ -1472,7 +1516,7 @@ class _ManageLeaveStatusState extends State<ManageLeaveStatus> {
     try {
       print('ManageLeaveStatus - Employee ID: $employeeId');
       final response = await http.get(
-        Uri.parse('http://192.168.1.7:3000/api/leavestatususer/$employeeId'),
+        Uri.parse('http://192.168.1.34:3000/api/leavestatususer/$employeeId'),
       );
 
       if (response.statusCode == 200) {
